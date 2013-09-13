@@ -126,7 +126,7 @@ static double max_near, min_far;
 ///
 static double self_energy;
 
-MMM2D_struct mmm2d_params = { 1e100, 10, 1, 0, 0, 1, 1, 1 };
+MMM2D_struct mmm2d_params = { 1e100, 10, 1, 0, 0, 0, 0, 1, 1, 1 };
 
 /** return codes for \ref MMM2D_tune_near and \ref MMM2D_tune_far */
 /*@{*/
@@ -547,15 +547,18 @@ static void setup_z_force()
   int np, c, i;
   double pref = coulomb.prefactor*C_2PI*ux*uy;
   Particle *part;
-  double *lclimgebot=NULL,*lclimgetop=NULL;
   int e_size=1,size = 2;
-  double e, e_di_l, e_di_h;
+  
+  /* there is NO contribution from images here, unlike claimed in Tyagi07a. Please refer to the Entropy
+     article of Arnold, Kesselheim, Breitsprecher et al, 2013, for details. */
 
+  /* REMOVE
   double fac_imgsum;
+  double e, e_di_l, e_di_h;
 
   /* in case of metallic boundary conditions on both sides, we get an infinite array,
      which only exists for charge neutral systems. But in this case, we can as well
-     not sum up the force array, as the net force per image is 0 */
+     not sum up the force array, as the net force per image is 0
   if (mmm2d_params.delta_mult != 1.0) {
     fac_imgsum = 1/(1 - mmm2d_params.delta_mult);
   }
@@ -565,17 +568,13 @@ static void setup_z_force()
 
   if (mmm2d_params.dielectric_contrast_on) 
     clear_vec(lclimge, size); 
-
+  */
   if(this_node==0) {
-    
-    lclimgebot=blwentry(lclcblk,0,e_size);
-    clear_vec(lclimgebot, e_size);
+    clear_vec(blwentry(lclcblk,0,e_size), e_size);
   }
   
   if(this_node==n_nodes-1) {
-    
-    lclimgetop=abventry(lclcblk,n_layers+1,e_size);
-    clear_vec(lclimgetop, e_size);
+    clear_vec(abventry(lclcblk,n_layers+1,e_size), e_size);
   }
 
   /* calculate local cellblks. partblks don't make sense */
@@ -584,36 +583,42 @@ static void setup_z_force()
     part = cells[c].part;
     lclcblk[size*c] = 0;
     for (i = 0; i < np; i++) {
-      lclcblk[size*c] += part[i].p.q;
-      
+      lclcblk[size*c] += part[i].p.q;					
+
+      /* REMOVE      
       if (mmm2d_params.dielectric_contrast_on) {
+
 	e_di_l = (mmm2d_params.delta_mult*mmm2d_params.delta_mid_bot
 		  + mmm2d_params.delta_mult)*fac_imgsum;
+
 	if (c==1 && this_node==0) {
-	  e = mmm2d_params.delta_mid_bot;  
-	  lclimgebot[QQEQQP] += part[i].p.q*e;
+	  e = mmm2d_params.delta_mid_bot;
+	  lclimgebot[QQEQQP] += part[i].p.q*e;				
 	}
 	else
-	  e_di_l += mmm2d_params.delta_mid_bot;
+	  e_di_l += mmm2d_params.delta_mid_bot;				
 
 	e_di_h = (mmm2d_params.delta_mult*mmm2d_params.delta_mid_top
 		  + mmm2d_params.delta_mult)*fac_imgsum;
 
 	if (c==n_layers && this_node==n_nodes-1) {
 	  e = mmm2d_params.delta_mid_top;
-	  lclimgetop[QQEQQP] += part[i].p.q*e;
+	  lclimgetop[QQEQQP] += part[i].p.q*e;				
 	}
 	else
 	  e_di_h += mmm2d_params.delta_mid_top;
 
-	lclimge[QQEQQP] += part[i].p.q*e_di_l;
+	lclimge[QQEQQP] += part[i].p.q*e_di_l;		
        	lclimge[QQEQQM] += part[i].p.q*e_di_h;
-      }   
+      }
+      */
     }
     lclcblk[size*c] *= pref;
-    lclcblk[size*c+1] = lclcblk[size*c];   
+    lclcblk[size*c+1] = lclcblk[size*c];
+
   }
 
+  /* REMOVE
   if (mmm2d_params.dielectric_contrast_on) {
     scale_vec(pref, lclimge, size);
     if(this_node==0)
@@ -621,7 +626,9 @@ static void setup_z_force()
     if(this_node==n_nodes-1)
       scale_vec(pref, abventry(lclcblk, n_layers + 1, e_size), e_size);
   }
+  */
 }
+
 
 static void add_z_force()
 {
@@ -630,6 +637,29 @@ static void add_z_force()
   Particle *part;
   double *othcblk;
   int size = 2;
+  double field_tot=0;
+
+  /* total dipole moment term, for capacitor feature */
+  if (mmm2d_params.const_pot_on) {
+    double gbl_dm_z = 0;
+    double lcl_dm_z = 0;
+
+    for (c = 0; c < local_cells.n; c++) {
+      int npl = local_cells.cell[c]->n;
+      Particle *pl = local_cells.cell[c]->part;
+      for (i = 0; i < npl; i++) {
+	lcl_dm_z += pl[i].p.q*(pl[i].r.p[2] + pl[i].l.i[2]*box_l[2]);
+//	lcl_dm_z += pl[i].p.q*pl[i].r.p[2];
+      }
+    }
+    MPI_Allreduce(&lcl_dm_z, &gbl_dm_z, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+    //                     Global dipole moment to pot. diff.
+    s_charge_induced = gbl_dm_z * coulomb.prefactor*4*M_PI*ux*uy*uz;
+    s_charge_bare = mmm2d_params.pot_diff * uz;
+
+    field_tot = s_charge_induced + s_charge_bare;
+//  fprintf(stderr, "field_tot: %g \n", field_tot);
+  }
 
   for (c = 1; c <= n_layers; c++) {
     othcblk = block(gblcblk, c - 1, size);
@@ -637,10 +667,12 @@ static void add_z_force()
     np   = cells[c].n;
     part = cells[c].part;
     for (i = 0; i < np; i++) {
-      part[i].f.f[2] += part[i].p.q*add;
+      part[i].f.f[2] += part[i].p.q*(add+field_tot);
       LOG_FORCES(fprintf(stderr, "%d: part %d force %10.3g %10.3g %10.3g\n",
 			 this_node, part[i].p.identity, part[i].f.f[0],
 			 part[i].f.f[1], part[i].f.f[2]));
+
+      
     }
   }
 }
@@ -694,6 +726,27 @@ static double z_energy()
       
     }
   }
+
+  /* total dipole moment term, for capacitor feature */
+  if (mmm2d_params.const_pot_on) {
+    double gbl_dm_z = 0;
+    double lcl_dm_z = 0;
+
+    for (c = 0; c < local_cells.n; c++) {
+      int npl = local_cells.cell[c]->n;
+      Particle *pl = local_cells.cell[c]->part;
+      for (i = 0; i < npl; i++) {
+	lcl_dm_z += pl[i].p.q*(pl[i].r.p[2] + pl[i].l.i[2]*box_l[2]);
+//	lcl_dm_z += pl[i].p.q*pl[i].r.p[2];
+      }
+    }
+    MPI_Allreduce(&lcl_dm_z, &gbl_dm_z, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+    // zero potential difference contribution
+    eng += gbl_dm_z*gbl_dm_z * coulomb.prefactor*2*M_PI*ux*uy*uz;
+    // external potential shift contribution
+    eng += mmm2d_params.pot_diff * uz * gbl_dm_z;
+  }
+
   return eng;
 }
 
@@ -923,7 +976,7 @@ static void add_P_force()
       part[i].f.f[0] +=
 	partblk[size*ic + POQESM]*othcblk[POQECP] - partblk[size*ic + POQECM]*othcblk[POQESP] +
 	partblk[size*ic + POQESP]*othcblk[POQECM] - partblk[size*ic + POQECP]*othcblk[POQESM];
-      part[i].f.f[2] +=
+        part[i].f.f[2] +=
 	partblk[size*ic + POQECM]*othcblk[POQECP] + partblk[size*ic + POQESM]*othcblk[POQESP] -
 	partblk[size*ic + POQECP]*othcblk[POQECM] - partblk[size*ic + POQESP]*othcblk[POQESM];
 
@@ -1196,16 +1249,23 @@ static void add_force_contribution(int p, int q)
   
   if (q == 0) {
     if (p == 0) {
+
       setup_z_force();
 
+      /* REMOVE
       if (mmm2d_params.dielectric_contrast_on)
 	gather_image_contributions(1);
       else
-	clear_image_contributions(1);
+      */
+
+      //Clear image contr. calculated for p,q <> 0
+      clear_image_contributions(1);
 
       distribute(1, 1.);
+
       add_z_force();
       checkpoint("************2piz", 0, 0, 1);
+
     }
     else {
       omega = C_2PI*ux*p;
@@ -1678,6 +1738,7 @@ void add_mmm2d_coulomb_pair_force(double charge_factor,
 
   for (i = 0; i < 3; i++)
     force[i] += pref*F[i];
+
 }
 
 MDINLINE double calc_mmm2d_copy_pair_energy(double d[3])
@@ -1832,7 +1893,8 @@ void MMM2D_self_energy()
  * COMMON PARTS
  ****************************************/
 
-int MMM2D_set_params(double maxPWerror, double far_cut, double delta_top, double delta_bot)
+// (Konrad) Const. pot parameter setup
+int MMM2D_set_params(double maxPWerror, double far_cut, double delta_top, double delta_bot, int const_pot_on, double pot_diff)
 {
   int err;
 
@@ -1842,18 +1904,28 @@ int MMM2D_set_params(double maxPWerror, double far_cut, double delta_top, double
   }
 
   mmm2d_params.maxPWerror = maxPWerror;
-    
-  if (delta_top != 0.0 || delta_bot != 0.0) {
+
+  if (const_pot_on==1) {
+    mmm2d_params.dielectric_contrast_on = 1;
+    mmm2d_params.delta_mid_top = -1;
+    mmm2d_params.delta_mid_bot = -1;
+    mmm2d_params.delta_mult = 1;
+    mmm2d_params.const_pot_on = 1;
+    mmm2d_params.pot_diff= pot_diff;
+  }    
+  else if (delta_top != 0.0 || delta_bot != 0.0) {
     mmm2d_params.dielectric_contrast_on = 1;
     mmm2d_params.delta_mid_top = delta_top;
     mmm2d_params.delta_mid_bot = delta_bot;
     mmm2d_params.delta_mult = delta_top*delta_bot;
+    mmm2d_params.const_pot_on = 0;
   }
   else {
     mmm2d_params.dielectric_contrast_on = 0;
     mmm2d_params.delta_mid_top = 0;
     mmm2d_params.delta_mid_bot = 0;
     mmm2d_params.delta_mult = 0;
+    mmm2d_params.const_pot_on = 0;
   }
 
   MMM2D_setup_constants();
@@ -1959,8 +2031,9 @@ void MMM2D_on_resort_particles()
 }
 
 
-void  MMM2D_dielectric_layers_force_contribution()
+void MMM2D_dielectric_layers_force_contribution()
 {
+
   int c, i, j;
   Cell  *celll;
   int      npl;
@@ -1969,9 +2042,11 @@ void  MMM2D_dielectric_layers_force_contribution()
   double charge_factor;
   double a[3];
   double force[3]={0, 0, 0};
+  double pref = coulomb.prefactor*C_2PI*ux*uy;
 
   if (!mmm2d_params.dielectric_contrast_on) return;
-
+	
+  // First and last layer near field force contribution
   if(this_node==0) {
     c=1;
     celll = &cells[c];
@@ -1988,6 +2063,8 @@ void  MMM2D_dielectric_layers_force_contribution()
        	dist2 = sqrlen(d);
 	charge_factor=p1->p.q*pl[j].p.q*mmm2d_params.delta_mid_bot;
 	add_mmm2d_coulomb_pair_force(charge_factor, d, sqrt(dist2), dist2, force);
+	/* remove unwanted 2 pi |z| part (cancels due to charge neutrality) */
+	force[2] -= pref*charge_factor;
       }
       for (j = 0; j < 3; j++) { 
 	p1->f.f[j] += force[j];
@@ -1996,7 +2073,6 @@ void  MMM2D_dielectric_layers_force_contribution()
   }
   
   if(this_node==n_nodes-1) {
-  
     c=n_layers;
     celll = &cells[c];
     pl    = celll->part;
@@ -2010,16 +2086,17 @@ void  MMM2D_dielectric_layers_force_contribution()
 	dist2 = sqrlen(d);
 	charge_factor=p1->p.q*pl[j].p.q*mmm2d_params.delta_mid_top; 
 	add_mmm2d_coulomb_pair_force(charge_factor, d, sqrt(dist2), dist2, force);
+	/* remove unwanted 2 pi |z| part (cancels due to charge neutrality) */
+	force[2] += pref*charge_factor;
       }
       for (j = 0; j < 3; j++) { 
 	p1->f.f[j] += force[j];
       }
     }
   }
-
 }
 
-double  MMM2D_dielectric_layers_energy_contribution()
+double MMM2D_dielectric_layers_energy_contribution()
 {
   int c, i, j;
   Cell  *celll;
@@ -2029,8 +2106,7 @@ double  MMM2D_dielectric_layers_energy_contribution()
   double charge_factor;
   double a[3];
   double eng=0.0;
-  // prefactor for the charged plate interaction removal
-  double corr_pref = coulomb.prefactor*C_2PI*ux*uy;
+  double pref = coulomb.prefactor*C_2PI*ux*uy;
 
   if (!mmm2d_params.dielectric_contrast_on) return 0.0;
 
@@ -2047,7 +2123,8 @@ double  MMM2D_dielectric_layers_energy_contribution()
        	layered_get_mi_vector(d, p1->r.p, a);
        	dist2 = sqrlen(d);
 	charge_factor = mmm2d_params.delta_mid_bot*p1->p.q*pl[j].p.q;
-	eng+=mmm2d_coulomb_pair_energy(charge_factor, d, dist2, sqrt(dist2)) + corr_pref*charge_factor*d[2];
+	/* last term removes unwanted 2 pi |z| part (cancels due to charge neutrality) */
+	eng+=mmm2d_coulomb_pair_energy(charge_factor, d, dist2, sqrt(dist2)) + pref*charge_factor*d[2];
       }
     }
   }
@@ -2064,11 +2141,13 @@ double  MMM2D_dielectric_layers_energy_contribution()
 	layered_get_mi_vector(d, p1->r.p, a);
 	dist2 = sqrlen(d);
 	charge_factor=mmm2d_params.delta_mid_top*p1->p.q*pl[j].p.q;
-	eng+=mmm2d_coulomb_pair_energy(charge_factor, d, dist2, sqrt(dist2)) - corr_pref*charge_factor*d[2];
+	/* last term removes unwanted 2 pi |z| part (cancels due to charge neutrality) */
+	eng+=mmm2d_coulomb_pair_energy(charge_factor, d, dist2, sqrt(dist2)) - pref*charge_factor*d[2];
       }
     }
   }
-  return 0.5*eng;
+
+  return 0.5*eng;  
 }
 
 #endif

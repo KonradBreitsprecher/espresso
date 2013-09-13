@@ -56,10 +56,12 @@ typedef struct {
   /// flag whether there is any dielectric contrast in the system
   int dielectric_contrast_on;
 
-  /// dielectric constants
-  double di_top, di_mid, di_bot;
   /// dielectric prefactors
-  double di_mid_top, di_mid_bot, di_fac;
+  double di_mid_top,di_mid_bot;
+
+  /// (Konrad) connected electrodes with applied potential
+  int const_pot_on;
+  double pot_diff;
 
   /** minimal distance of two charges for which the far formula is used. For plain ELC, this equals
       gap_size, but for dielectric ELC it is only 1./3. of that. */
@@ -72,6 +74,7 @@ typedef struct {
   double h;
 
 } ELC_struct;
+
 extern ELC_struct elc_params;
 
 /** set parameters for ELC.
@@ -87,7 +90,7 @@ extern ELC_struct elc_params;
     @param bottom  dielectric constant of lower part
 */
 int ELC_set_params(double maxPWerror, double min_dist, double far_cut, int neutralize,
-		   double top, double mid, double bottom);
+		   double top, double bottom, int const_pot_on, double pot_diff);
 
 /// the force calculation 
 void ELC_add_force();
@@ -109,6 +112,7 @@ double ELC_P3M_dielectric_layers_energy_contribution(Particle *p1, Particle *p2)
 /// pairwise contributions from the lowest and top layers to the force
 void   ELC_P3M_dielectric_layers_force_contribution(Particle *p1, Particle *p2,
 						    double force1[3], double force2[3]); 
+
 /// self energies of top and bottom layers with their virtual images
 double ELC_P3M_dielectric_layers_energy_self();
 /// forces of particles in border layers with themselves

@@ -525,6 +525,12 @@ typedef struct {
 
 } Coulomb_parameters;
 
+
+/* (konrad) Induced charge contributions for ic-mmm2d and ic-elc */
+#ifdef ELECTROSTATICS
+  double s_charge_induced, s_charge_bare;   
+#endif
+
 /*@}*/
 
 /** Defines parameters for a bonded interaction. */

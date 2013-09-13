@@ -28,7 +28,8 @@
 #include "utils.h"
 #include "communication.h"
 //#include "particle_data.h"
-//#include "interaction_data.h"
+//(konrad) added interaction_data.h to get COULOMB METHOD
+#include "interaction_data.h"
 #include "cells.h"
 #include "mmm2d.h"
 //#include "mmm-common.h"
@@ -39,6 +40,7 @@
 
 #ifdef ELECTROSTATICS
 
+// (Konrad) Const. pot parameter output
 int tclprint_to_result_MMM2D(Tcl_Interp *interp)
 {
   char buffer[TCL_DOUBLE_SPACE];
@@ -48,7 +50,11 @@ int tclprint_to_result_MMM2D(Tcl_Interp *interp)
   Tcl_PrintDouble(interp, mmm2d_params.far_cut, buffer);
   Tcl_AppendResult(interp, " ", buffer,(char *) NULL);
 
-  if (mmm2d_params.dielectric_contrast_on) {
+  if (mmm2d_params.const_pot_on) {
+    Tcl_PrintDouble(interp, mmm2d_params.pot_diff, buffer);
+    Tcl_AppendResult(interp, " capacitor ", buffer, (char *) NULL);
+  }
+  else if (mmm2d_params.dielectric_contrast_on) {
     Tcl_PrintDouble(interp, mmm2d_params.delta_mid_top, buffer);
     Tcl_AppendResult(interp, " dielectric-contrasts ", buffer, (char *) NULL);
     Tcl_PrintDouble(interp, mmm2d_params.delta_mid_bot, buffer);
@@ -58,6 +64,7 @@ int tclprint_to_result_MMM2D(Tcl_Interp *interp)
   return TCL_OK;
 }
 
+// (Konrad) Const. pot parameter parsing
 int tclcommand_inter_coulomb_parse_mmm2d(Tcl_Interp * interp, int argc, char ** argv)
 {
   int err;
@@ -65,10 +72,12 @@ int tclcommand_inter_coulomb_parse_mmm2d(Tcl_Interp * interp, int argc, char ** 
   double far_cut = -1;
   double top = 1, mid = 1, bot = 1;
   double delta_top = 0, delta_bot = 0;
+  double pot_diff = 0;
+  int const_pot_on = 0;
 
   if (argc < 1) {
     Tcl_AppendResult(interp, "wrong # arguments: inter coulomb mmm2d <maximal pairwise error> "
-		     "{<fixed far cutoff>} {dielectric <e1> <e2> <e3>} | {dielectric-contrasts <d1> <d2>}", (char *) NULL);
+		     "{<fixed far cutoff>} <{dielectric <e1> <e2> <e3>} | {dielectric-contrasts <d1> <d2>} | {capacitor <dU>}>", (char *) NULL);
     return TCL_ERROR;
   }
   
@@ -95,9 +104,17 @@ int tclcommand_inter_coulomb_parse_mmm2d(Tcl_Interp * interp, int argc, char ** 
     else if (argc == 3 && ARG0_IS_S("dielectric-contrasts")) {
       if (!ARG_IS_D(1,delta_top) || !ARG_IS_D(2,delta_bot))
 	return TCL_ERROR;
-    } else {
+    }
+    else if (argc == 2 && ARG0_IS_S("capacitor")) {
+      if (!ARG_IS_D(1,pot_diff))
+	return TCL_ERROR;
+      delta_top = -1;
+      delta_bot = -1;
+      const_pot_on = 1;
+    }
+    else {
       Tcl_AppendResult(interp, "wrong # arguments: inter coulomb mmm2d <maximal pairwise error> "
-		       "{<fixed far cutoff>} {dielectric <e1> <e2> <e3>} | {dielectric-contrasts <d1> <d2>}", (char *) NULL);
+		       "{<fixed far cutoff>} <{dielectric <e1> <e2> <e3>} | {dielectric-contrasts <d1> <d2>} | {capacitor <dU>}>", (char *) NULL);
       return TCL_ERROR;
     }
   }
@@ -108,7 +125,7 @@ int tclcommand_inter_coulomb_parse_mmm2d(Tcl_Interp * interp, int argc, char ** 
     return TCL_ERROR;
   }
 
-  if ((err = MMM2D_set_params(maxPWerror, far_cut, delta_top, delta_bot)) > 0) {
+  if ((err = MMM2D_set_params(maxPWerror, far_cut, delta_top, delta_bot, const_pot_on, pot_diff)) > 0) {
     Tcl_AppendResult(interp, mmm2d_errors[err], (char *)NULL);
     return TCL_ERROR;
   }

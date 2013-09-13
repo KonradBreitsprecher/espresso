@@ -39,6 +39,10 @@
 #include "tab.h"
 #include "buckingham.h"
 
+//(konrad)for surface charge output
+#include "mmm2d.h"
+#include "elc.h"
+
 // nonbonded
 #include "bmhtf-nacl_tcl.h"
 #include "buckingham_tcl.h"
@@ -192,6 +196,7 @@ int tclcommand_inter_parse_coulomb(Tcl_Interp * interp, int argc, char ** argv)
   
   return TCL_ERROR;
 }
+
 
 /* =========================================================
    ========================================================= */
@@ -864,6 +869,40 @@ int tclcommand_inter_print_partner_num(Tcl_Interp *interp, int bond_type)
 		   (char *) NULL);
   return TCL_ERROR;
 }
+
+#ifdef ELECTROSTATICS
+/* (konrad) print surface charge for capacitor feature in ic-mmm2d and ic-elc */
+int tclcommand_print_SurfaceCharge(ClientData data, Tcl_Interp * interp, int argc, char ** argv)
+{
+  char buffer[TCL_DOUBLE_SPACE + TCL_INTEGER_SPACE + 2];
+  double value;
+
+  if ((coulomb.method != COULOMB_MMM2D   && coulomb.method != COULOMB_ELC_P3M) ||
+      (coulomb.method == COULOMB_MMM2D   && !mmm2d_params.const_pot_on)        ||
+      (coulomb.method == COULOMB_ELC_P3M && !elc_params.const_pot_on)) {
+    Tcl_AppendResult(interp, "surface charges only available for mmm2d or p3m+elc with capacitor feature", (char *) NULL);
+    return TCL_ERROR;
+  }
+  else if (argc > 2) {
+    Tcl_AppendResult(interp, "wrong # arguments: surfacecharge <{total} | {induced} | {bare}>", (char *) NULL);
+    return TCL_ERROR;
+  }
+  else if (argc == 1 || ARG1_IS_S("total")) {
+	value = s_charge_induced + s_charge_bare;
+  }
+  else if (ARG1_IS_S("induced")) {
+	value = s_charge_induced;
+  }
+  else if (ARG1_IS_S("bare")) {
+	value = s_charge_bare;
+  }
+
+  Tcl_PrintDouble(interp, value, buffer);
+  Tcl_AppendResult(interp, buffer, (char *)NULL);
+
+  return TCL_OK;
+}
+#endif
 
 /********************************************************************************/
 /*                                       parsing                                */
