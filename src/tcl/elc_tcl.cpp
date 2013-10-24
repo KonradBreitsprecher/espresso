@@ -63,7 +63,6 @@ int tclcommand_inter_coulomb_parse_elc_params(Tcl_Interp * interp, int argc, cha
   double delta_top = 0, delta_bot = 0;
   int neutralize = 1;
   double pot_diff = 0;
-  double plate_sep = 0;
   int const_pot_on = 0;
 
   if (argc < 2) {

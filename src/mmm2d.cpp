@@ -585,7 +585,7 @@ static void setup_z_force()
     for (i = 0; i < np; i++) {
       lclcblk[size*c] += part[i].p.q;					
 
-      /* REMOVE      
+      /** REMOVE      
       if (mmm2d_params.dielectric_contrast_on) {
 
 	e_di_l = (mmm2d_params.delta_mult*mmm2d_params.delta_mid_bot
@@ -611,7 +611,7 @@ static void setup_z_force()
 	lclimge[QQEQQP] += part[i].p.q*e_di_l;		
        	lclimge[QQEQQM] += part[i].p.q*e_di_h;
       }
-      */
+      **/
     }
     lclcblk[size*c] *= pref;
     lclcblk[size*c+1] = lclcblk[size*c];
@@ -654,10 +654,10 @@ static void add_z_force()
     }
     MPI_Allreduce(&lcl_dm_z, &gbl_dm_z, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
     //                     Global dipole moment to pot. diff.
-    s_charge_induced = gbl_dm_z * coulomb.prefactor*4*M_PI*ux*uy*uz;
-    s_charge_bare = mmm2d_params.pot_diff * uz;
+    coulomb.s_charge_induced = gbl_dm_z * coulomb.prefactor*4*M_PI*ux*uy*uz;
+    coulomb.s_charge_bare = mmm2d_params.pot_diff * uz;
 
-    field_tot = s_charge_induced + s_charge_bare;
+    field_tot = coulomb.s_charge_induced + coulomb.s_charge_bare;
 //  fprintf(stderr, "field_tot: %g \n", field_tot);
   }
 

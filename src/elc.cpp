@@ -349,12 +349,12 @@ static void add_dipole_force()
   
   //(konrad) For connected plates, only const. pot. force
   if (elc_params.const_pot_on) {
-    s_charge_induced = gblcblk[1];
-    s_charge_bare = elc_params.pot_diff * uz2;
+    coulomb.s_charge_induced = gblcblk[1];
+    coulomb.s_charge_bare = elc_params.pot_diff * uz2;
    //fprintf(stderr,"elc_params.pot_diff: %g\n", elc_params.pot_diff);
 
-    field_tot = -s_charge_bare + gblcblk[0] - gblcblk[1];
-    //field_tot = -s_charge_bare;
+    field_tot = -coulomb.s_charge_bare + gblcblk[0] - gblcblk[1];
+    //field_tot = -coulomb.s_charge_bare;
   }
   else {
     field_tot = gblcblk[0];

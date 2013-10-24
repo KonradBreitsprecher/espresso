@@ -27,7 +27,7 @@
 
 int tclcommand_inter_parse_harmonic(Tcl_Interp *interp, int bond_type, int argc, char **argv)
 {
-  double k, r,r_cut;
+  double k, r, r_cut;
 
   if (argc < 3) {
     Tcl_AppendResult(interp, "harmonic needs at least 2 parameters: "

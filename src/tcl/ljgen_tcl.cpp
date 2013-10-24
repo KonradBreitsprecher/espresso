@@ -52,9 +52,9 @@ int tclprint_to_result_ljgenIA(Tcl_Interp *interp, int i, int j)
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);
   Tcl_PrintDouble(interp, data->LJGEN_offset, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);
-  snprintf (buffer, sizeof (buffer), "%d ", data->LJGEN_a1);
+  Tcl_PrintDouble(interp, data->LJGEN_a1, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);  
-  snprintf (buffer, sizeof (buffer), "%d ", data->LJGEN_a2);
+  Tcl_PrintDouble(interp, data->LJGEN_a2, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);  
   Tcl_PrintDouble(interp, data->LJGEN_b1, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);
@@ -78,11 +78,11 @@ int tclcommand_inter_parse_ljgen(Tcl_Interp * interp,
 		       int argc, char ** argv)
 {
   /* parameters needed for LJGEN */
-  double eps, sig, cut, shift, offset, cap_radius, b1, b2;
+  double eps, sig, cut, shift, offset, cap_radius, b1, b2,a1, a2;
 #ifdef LJGEN_SOFTCORE
   double lambda, softrad;
 #endif
-  int change, a1, a2;
+  int change;
 
   /* get lennard-jones interaction type */
   if (argc < 10) {
@@ -103,11 +103,11 @@ int tclcommand_inter_parse_ljgen(Tcl_Interp * interp,
       (! ARG_IS_D(3, cut))    ||
       (! ARG_IS_D(4, shift))  ||
       (! ARG_IS_D(5, offset)) ||
-      (! ARG_IS_I(6, a1))     ||
-      (! ARG_IS_I(7, a2))     ||
+      (! ARG_IS_D(6, a1))     ||
+      (! ARG_IS_D(7, a2))     ||
       (! ARG_IS_D(8, b1))     ||
       (! ARG_IS_D(9, b2))) {
-    Tcl_AppendResult(interp, "lj-gen needs 7 DOUBLE and 2 INT parameers: "
+    Tcl_AppendResult(interp, "lj-gen needs 9 DOUBLE parameters: "
 		     "<lj_eps> <lj_sig> <lj_cut> <lj_shift> <lj_offset> <a1> <a2> <b1> <b2> "
          "[<lj_cap> "
 #ifdef LJGEN_SOFTCORE

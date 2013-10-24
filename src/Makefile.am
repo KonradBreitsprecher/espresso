@@ -125,12 +125,14 @@ libEspresso_a_SOURCES += \
 	angle_cosine.cpp angle_cosine.hpp \
 	angle_cossquare.cpp angle_cossquare.hpp \
 	angledist.cpp angledist.hpp \
+	drude.cpp drude.hpp \
 	dihedral.cpp dihedral.hpp \
 	endangledist.cpp endangledist.hpp \
 	fene.cpp fene.hpp \
 	harmonic.cpp harmonic.hpp \
 	overlap.cpp overlap.hpp \
 	subt_lj.cpp subt_lj.hpp \
+	subt_elec.cpp subt_elec.hpp \
 	object-in-fluid/area_force_local.cpp object-in-fluid/area_force_local.hpp \
 	object-in-fluid/area_force_global.cpp object-in-fluid/area_force_global.hpp \
 	object-in-fluid/bending_force.cpp object-in-fluid/bending_force.hpp \
@@ -232,11 +234,13 @@ libEspresso_a_SOURCES += \
 	tcl/angle_cossquare_tcl.cpp tcl/angle_cossquare_tcl.hpp \
 	tcl/angledist_tcl.cpp tcl/angledist_tcl.hpp \
 	tcl/dihedral_tcl.cpp tcl/dihedral_tcl.hpp \
+	tcl/drude_tcl.cpp tcl/drude_tcl.hpp \
 	tcl/endangledist_tcl.cpp tcl/endangledist_tcl.hpp \
 	tcl/fene_tcl.cpp tcl/fene_tcl.hpp \
 	tcl/harmonic_tcl.cpp tcl/harmonic_tcl.hpp \
 	tcl/overlap_tcl.cpp tcl/overlap_tcl.hpp \
 	tcl/subt_lj_tcl.cpp tcl/subt_lj_tcl.hpp \
+	tcl/subt_elec_tcl.cpp tcl/subt_elec_tcl.hpp \
 	tcl/object-in-fluid/area_force_local_tcl.cpp \
 	tcl/object-in-fluid/area_force_local_tcl.hpp \
 	tcl/object-in-fluid/area_force_global_tcl.cpp \

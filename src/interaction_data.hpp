@@ -78,6 +78,10 @@
 #define BONDED_IA_AREA_FORCE_GLOBAL 18 
 /** Type of bonded interaction is a linear stretching force. */
 #define BONDED_IA_STRETCHLIN_FORCE 19 
+/** Type of bonded interaction is a (-coulomb) potential. */
+#define BONDED_IA_SUBT_ELEC 20
+/** Type of bonded interaction is a drude bond. */
+#define BONDED_IA_DRUDE 21
 
 /** Specify tabulated bonded interactions  */
 #define TAB_UNKNOWN          0
@@ -234,8 +238,8 @@ typedef struct {
   double LJGEN_shift;
   double LJGEN_offset;
   double LJGEN_capradius;
-  int LJGEN_a1;
-  int LJGEN_a2;
+  double LJGEN_a1;
+  double LJGEN_a2;
   double LJGEN_b1;
   double LJGEN_b2;
 #ifdef LJGEN_SOFTCORE
@@ -517,6 +521,12 @@ typedef struct {
   
   /** Method to treat coulomb interaction. See \ref COULOMB_NONE "Type codes for Coulomb" */
   int method;
+
+  /** (konrad) Induced surface charge (for capacitor feature) **/
+  double s_charge_induced;
+  /** Applied const. surface charge (for capacitor feature) **/ 
+  double s_charge_bare; 
+
  #endif
 
  #ifdef DIPOLES
@@ -526,12 +536,6 @@ typedef struct {
  #endif
 
 } Coulomb_parameters;
-
-
-/* (konrad) Induced charge contributions for ic-mmm2d and ic-elc */
-#ifdef ELECTROSTATICS
-  double s_charge_induced, s_charge_bare;   
-#endif
 
 /*@}*/
 
@@ -674,12 +678,26 @@ typedef struct {
       double *para_c;
     } overlap;
 #endif
+#ifdef LENNARD_JONES
     /** Dummy parameters for -LJ Potential */
     struct {
       double k;
       double r;
       double r2;
     } subt_lj;  
+#endif
+#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+    /** Parameters for drude bond **/
+    struct {
+      double temp_core;
+      double gamma_core;
+      double temp_drude;
+      double gamma_drude;
+      double k;
+      double mass_red_drude;
+      double r_cut;
+    } drude;
+#endif
     /**Parameters for the rigid_bond/SHAKE/RATTLE ALGORITHM*/
     struct {
       /**Length of rigid bond/Constrained Bond*/

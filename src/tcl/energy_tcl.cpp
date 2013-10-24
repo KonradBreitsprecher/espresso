@@ -122,7 +122,7 @@ static void tclcommand_analyze_print_all(Tcl_Interp *interp)
 
 int tclcommand_analyze_parse_and_print_energy(Tcl_Interp *interp, int argc, char **argv)
 {
-  /* 'analyze energy [{ fene <type_num> | harmonic <type_num> | subt_lj_harm <type_num> | subt_lj_fene <type_num> | subt_lj <type_num> | lj <type1> <type2> | ljcos <type1> <type2> | ljcos2 <type1> <type2> | gb <type1> <type2> | coulomb | kinetic | total }]' */
+  /* 'analyze energy [{ fene <type_num> | harmonic <type_num> | subt_lj_harm <type_num> | subt_lj_fene <type_num> | subt_lj <type_num> | subt_elec <type_num> | drude <type_num> | lj <type1> <type2> | ljcos <type1> <type2> | ljcos2 <type1> <type2> | gb <type1> <type2> | coulomb | kinetic | total }]' */
   char buffer[TCL_DOUBLE_SPACE + TCL_INTEGER_SPACE + 2];
   int i, j;
   double value;
@@ -149,6 +149,8 @@ int tclcommand_analyze_parse_and_print_energy(Tcl_Interp *interp, int argc, char
 	     ARG0_IS_S("subt_lj_harm") ||
 	     ARG0_IS_S("subt_lj_fene") ||
 	     ARG0_IS_S("subt_lj") ||
+	     ARG0_IS_S("subt_elec") ||
+	     ARG0_IS_S("drude") ||
 	     ARG0_IS_S("harmonic") ||
 	     ARG0_IS_S("endangledist")) {
       if(argc<2 || ! ARG1_IS_I(i)) {

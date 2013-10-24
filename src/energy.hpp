@@ -54,7 +54,9 @@
 #include "object-in-fluid/bending_force.hpp"
 #include "object-in-fluid/volume_force.hpp"
 #include "harmonic.hpp"
+#include "subt_elec.hpp"
 #include "subt_lj.hpp"
+#include "drude.hpp"
 #include "angle.hpp"
 #include "angle_harmonic.hpp"
 #include "angle_cosine.hpp"
@@ -335,6 +337,14 @@ inline void add_bonded_energy(Particle *p1)
 #ifdef LENNARD_JONES
     case BONDED_IA_SUBT_LJ:
       bond_broken = subt_lj_pair_energy(p1, p2, iaparams, dx, &ret);
+      break;
+#endif
+#ifdef ELECTROSTATICS
+    case BONDED_IA_SUBT_ELEC:
+      bond_broken = subt_elec_pair_energy(p1, p2, dx, &ret);
+      break;
+    case BONDED_IA_DRUDE:
+      bond_broken = drude_energy(p1, p2,iaparams, dx, &ret);
       break;
 #endif
 #ifdef BOND_ANGLE_OLD

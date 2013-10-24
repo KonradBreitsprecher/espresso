@@ -107,3 +107,4 @@ source vtf.tcl
 source vtk.tcl
 source dielectrics.tcl
 source object_in_fluid.tcl
+source drude_particle.tcl

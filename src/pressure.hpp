@@ -178,6 +178,16 @@ inline void calc_bonded_force(Particle *p1, Particle *p2, Bonded_ia_parameters *
       calc_subt_lj_pair_force(p1,p2,iaparams,dx,force);
       break;
 #endif
+#ifdef ELECTROSTATICS
+    case BONDED_IA_SUBT_ELEC:
+      calc_subt_elec_pair_force(p1,p2,dx,force);
+      break;
+/*(konrad) How to bond with asymm. forces ??
+    case BONDED_IA_DRUDE:
+      calc_drude_forces(p1,p2,dx,force,force2);
+      break;
+*/
+#endif
       /* since it is not clear at the moment how to handle a many body interaction here, I skip it */
     case BONDED_IA_ANGLE_HARMONIC:
       (*i)++; force[0] = force[1] = force[2] = 0; break;
@@ -433,6 +443,11 @@ inline void add_three_body_bonded_stress(Particle *p1) {
     }
 #ifdef LENNARD_JONES
     else if(type == BONDED_IA_SUBT_LJ) {
+      i = i + 2;
+    }
+#endif
+#ifdef ELECTROSTATICS
+    else if(type == BONDED_IA_SUBT_ELEC) {
       i = i + 2;
     }
 #endif

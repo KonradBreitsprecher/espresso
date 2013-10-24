@@ -429,10 +429,18 @@ static void recalc_maximal_cutoff_bonded()
       if((bonded_ia_params[i].p.harmonic.r_cut>0)&&(max_cut_bonded < bonded_ia_params[i].p.harmonic.r_cut))
 	max_cut_bonded = bonded_ia_params[i].p.harmonic.r_cut;
       break;
+#if defined(ELECTROSTATICS)
     case BONDED_IA_SUBT_LJ:
       if(max_cut_bonded < bonded_ia_params[i].p.subt_lj.r)
 	max_cut_bonded = bonded_ia_params[i].p.subt_lj.r;
       break;
+#endif
+#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+    case BONDED_IA_DRUDE:
+      if((bonded_ia_params[i].p.drude.r_cut>0)&&(max_cut_bonded < bonded_ia_params[i].p.drude.r_cut))
+	max_cut_bonded = bonded_ia_params[i].p.drude.r_cut;
+      break;
+#endif
     case BONDED_IA_RIGID_BOND:
       if(max_cut_bonded < sqrt(bonded_ia_params[i].p.rigid_bond.d2))
 	max_cut_bonded = sqrt(bonded_ia_params[i].p.rigid_bond.d2);
@@ -750,6 +758,10 @@ const char *get_name_of_bonded_ia(int i) {
     return "HARMONIC";
   case BONDED_IA_SUBT_LJ:
     return "SUBT_LJ";
+  case BONDED_IA_SUBT_ELEC:
+    return "SUBT_ELEC";
+  case BONDED_IA_DRUDE:
+    return "DRUDE";
   case BONDED_IA_TABULATED:
     return "tabulated";
   case BONDED_IA_OVERLAPPED:

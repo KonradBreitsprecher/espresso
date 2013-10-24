@@ -47,7 +47,6 @@ int tclprint_to_result_ljIA(Tcl_Interp *interp, int i, int j)
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);  
   Tcl_PrintDouble(interp, data->LJ_min, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);  
-
   
   return TCL_OK;
 }

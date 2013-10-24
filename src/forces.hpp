@@ -65,6 +65,8 @@
 #include "object-in-fluid/volume_force.hpp"
 #include "harmonic.hpp"
 #include "subt_lj.hpp"
+#include "subt_elec.hpp"
+#include "drude.hpp"
 #include "angle.hpp"
 #include "angle_harmonic.hpp"
 #include "angle_cosine.hpp"
@@ -509,6 +511,16 @@ inline void add_bonded_force(Particle *p1)
       bond_broken = calc_subt_lj_pair_force(p1, p2, iaparams, dx, force);
       break;
 #endif
+#ifdef ELECTROSTATICS
+    case BONDED_IA_SUBT_ELEC:
+      bond_broken = calc_subt_elec_pair_force(p1, p2, dx, force);
+      break;
+#ifdef LANGEVIN_PER_PARTICLE
+    case BONDED_IA_DRUDE:
+      bond_broken = calc_drude_forces(p1, p2, iaparams, dx, force, force2);
+      break;
+#endif
+#endif
 #ifdef BOND_ANGLE_OLD
 	/* the first case is not needed and should not be called */ 
     case BONDED_IA_ANGLE_OLD:
@@ -623,6 +635,12 @@ inline void add_bonded_force(Particle *p1)
           p2->f.f[j] += force2[j];
 	  break;
 #endif // BOND_ENDANGLEDIST
+#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+        case BONDED_IA_DRUDE:
+	  p1->f.f[j] += force[j];
+          p2->f.f[j] += force2[j];
+	  break;
+#endif
 	default:
 	  p1->f.f[j] += force[j];
 	  p2->f.f[j] -= force[j];

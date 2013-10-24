@@ -689,6 +689,11 @@ void on_parameter_change(int field)
       lb_reinit_parameters();
     }
 #endif
+/* Recalc drude parameters on timestep change
+#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+    calc_drude_params();
+#endif
+ */
   case FIELD_LANGEVIN_GAMMA:
   case FIELD_DPD_GAMMA:
   case FIELD_DPD_TGAMMA:

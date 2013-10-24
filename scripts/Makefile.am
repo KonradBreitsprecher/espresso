@@ -28,6 +28,7 @@ ESSCRIPTS = \
 	bundle.tcl \
 	countBonds.tcl \
 	dielectrics.tcl \
+	drude_particle.tcl \
 	gibbs_ghmc.tcl \
 	parallel_tempering.tcl \
 	pdb.tcl \

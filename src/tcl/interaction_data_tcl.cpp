@@ -40,8 +40,8 @@
 #include "buckingham.hpp"
 
 //(konrad)for surface charge output
-#include "mmm2d.h"
-#include "elc.h"
+#include "mmm2d.hpp"
+#include "elc.hpp"
 
 // nonbonded
 #include "bmhtf-nacl_tcl.hpp"
@@ -88,6 +88,8 @@
 #include "overlap_tcl.hpp"
 #include "harmonic_tcl.hpp"
 #include "subt_lj_tcl.hpp"
+#include "subt_elec_tcl.hpp"
+#include "drude_tcl.hpp"
 #include "tcl/object-in-fluid/area_force_local_tcl.hpp"
 #include "tcl/object-in-fluid/area_force_global_tcl.hpp"
 #include "tcl/object-in-fluid/volume_force_tcl.hpp"
@@ -358,6 +360,12 @@ int tclprint_to_result_BondedIA(Tcl_Interp *interp, int i)
 #ifdef LENNARD_JONES
   case BONDED_IA_SUBT_LJ:
     return tclprint_to_result_subt_ljIA(interp, params);
+#endif
+#ifdef ELECTROSTATICS
+  case BONDED_IA_SUBT_ELEC:
+    return tclprint_to_result_subt_elecIA(interp);
+  case BONDED_IA_DRUDE:
+    return tclprint_to_result_drudeIA(interp, params);
 #endif
 #ifdef BOND_VIRTUAL
   case BONDED_IA_VIRTUAL_BOND:
@@ -874,10 +882,10 @@ int tclcommand_inter_print_partner_num(Tcl_Interp *interp, int bond_type)
 
 #ifdef ELECTROSTATICS
 /* (konrad) print surface charge for capacitor feature in ic-mmm2d and ic-elc */
-int tclcommand_print_SurfaceCharge(ClientData data, Tcl_Interp * interp, int argc, char ** argv)
+int tclcommand_print_surfacecharge(ClientData data, Tcl_Interp * interp, int argc, char ** argv)
 {
   char buffer[TCL_DOUBLE_SPACE + TCL_INTEGER_SPACE + 2];
-  double value;
+  double value=0;
 
   if ((coulomb.method != COULOMB_MMM2D   && coulomb.method != COULOMB_ELC_P3M) ||
       (coulomb.method == COULOMB_MMM2D   && !mmm2d_params.const_pot_on)        ||
@@ -890,13 +898,13 @@ int tclcommand_print_SurfaceCharge(ClientData data, Tcl_Interp * interp, int arg
     return TCL_ERROR;
   }
   else if (argc == 1 || ARG1_IS_S("total")) {
-	value = s_charge_induced + s_charge_bare;
+	value = coulomb.s_charge_induced + coulomb.s_charge_bare;
   }
   else if (ARG1_IS_S("induced")) {
-	value = s_charge_induced;
+	value = coulomb.s_charge_induced;
   }
   else if (ARG1_IS_S("bare")) {
-	value = s_charge_bare;
+	value = coulomb.s_charge_bare;
   }
 
   Tcl_PrintDouble(interp, value, buffer);
@@ -948,6 +956,10 @@ int tclcommand_inter_parse_bonded(Tcl_Interp *interp,
   REGISTER_BONDED("harmonic", tclcommand_inter_parse_harmonic);
 #ifdef LENNARD_JONES  
   REGISTER_BONDED("subt_lj", tclcommand_inter_parse_subt_lj);
+#endif
+#ifdef ELECTROSTATICS
+  REGISTER_BONDED("subt_elec", tclcommand_inter_parse_subt_elec);
+  REGISTER_BONDED("drude", tclcommand_inter_parse_drude);
 #endif
 #ifdef BOND_ANGLE_OLD
   REGISTER_BONDED("angle", tclcommand_inter_parse_angle);

@@ -178,7 +178,7 @@ static void register_tcl_commands(Tcl_Interp* interp) {
   REGISTER_COMMAND("correlation", tclcommand_correlation);
   /* in statistics_correlation.h */
 #ifdef ELECTROSTATICS
-  REGISTER_COMMAND("surfacecharge", tclcommand_print_SurfaceCharge);
+  REGISTER_COMMAND("surfacecharge", tclcommand_print_surfacecharge);
 #ifdef P3M
   REGISTER_COMMAND("iccp3m", tclcommand_iccp3m);
 #endif 

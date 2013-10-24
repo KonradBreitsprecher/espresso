@@ -26,7 +26,7 @@
     The corresponding header file is polymer.h.
  
     Created:       27.02.2003 by BAM
-       Based upon 'polymer.tcl' by BAM (20.02.2003).
+    Based upon 'polymer.tcl' by BAM (20.02.2003).
 */
 
 #include "polymer.hpp"
