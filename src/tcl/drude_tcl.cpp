@@ -26,16 +26,16 @@
 #include "drude_tcl.hpp"
 #include "drude.hpp"
 
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
     
 int tclcommand_inter_parse_drude(Tcl_Interp *interp, int bond_type,
 				   int argc, char **argv)
 {
-  double temp_core, gamma_core, temp_drude, gamma_drude, k, mass_red_drude, r_cut;
+  double temp_core, gamma_core, temp_drude, gamma_drude, k, mass_drude, r_cut;
 
   if (argc < 8) {
     Tcl_AppendResult(interp, "drude needs at least 7 parameters: "
-		     "<temp_core> <gamma_core> <temp_drude> <gamma_core> <k_drude> <mass_red_drude> <r_cut> ", (char *) NULL);
+		     "<temp_core> <gamma_core> <temp_drude> <gamma_core> <k_drude> <mass_drude> <r_cut> ", (char *) NULL);
     return TCL_ERROR;
   }
 
@@ -44,13 +44,13 @@ int tclcommand_inter_parse_drude(Tcl_Interp *interp, int bond_type,
        ! ARG_IS_D(3, temp_drude) ||
        ! ARG_IS_D(4, gamma_drude) ||
        ! ARG_IS_D(5, k) ||
-       ! ARG_IS_D(6, mass_red_drude) || 
+       ! ARG_IS_D(6, mass_drude) || 
        ! ARG_IS_D(7, r_cut) ) {
     Tcl_AppendResult(interp, "Parameters should be doubles", (char *) NULL);
     return TCL_ERROR;
   }
 
-  CHECK_VALUE(drude_set_params(bond_type, temp_core, gamma_core, temp_drude, gamma_drude, k, mass_red_drude, r_cut), "bond type must be nonnegative");
+  CHECK_VALUE(drude_set_params(bond_type, temp_core, gamma_core, temp_drude, gamma_drude, k, mass_drude, r_cut), "bond type must be nonnegative");
 }
 
 int tclprint_to_result_drudeIA(Tcl_Interp *interp, Bonded_ia_parameters *params)
@@ -68,7 +68,7 @@ int tclprint_to_result_drudeIA(Tcl_Interp *interp, Bonded_ia_parameters *params)
   Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
   Tcl_PrintDouble(interp, params->p.drude.k, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
-  Tcl_PrintDouble(interp, params->p.drude.mass_red_drude, buffer);
+  Tcl_PrintDouble(interp, params->p.drude.mass_drude, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
   Tcl_PrintDouble(interp, params->p.drude.r_cut, buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *) NULL);  

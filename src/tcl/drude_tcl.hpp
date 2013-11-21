@@ -28,7 +28,7 @@
 #include "parser.hpp"
 #include "interaction_data.hpp"
 
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
 
 /// parse parameters for the subt_elec potential    
 int tclcommand_inter_parse_drude(Tcl_Interp *interp, int bond_type,

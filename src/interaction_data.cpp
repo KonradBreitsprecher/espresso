@@ -435,7 +435,7 @@ static void recalc_maximal_cutoff_bonded()
 	max_cut_bonded = bonded_ia_params[i].p.subt_lj.r;
       break;
 #endif
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
     case BONDED_IA_DRUDE:
       if((bonded_ia_params[i].p.drude.r_cut>0)&&(max_cut_bonded < bonded_ia_params[i].p.drude.r_cut))
 	max_cut_bonded = bonded_ia_params[i].p.drude.r_cut;

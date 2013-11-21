@@ -34,7 +34,7 @@
 #include "integrate.hpp"
 #include "random.hpp"
 
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
 
 /*
 double rnd_kick_fac_d;
@@ -45,7 +45,7 @@ double fac_langevin_d_vd;
 */
 
 // set the parameters for the Drude correction
-int drude_set_params(int bond_type, double temp_core, double gamma_core, double temp_drude, double gamma_drude, double k, double mass_red_drude, double r_cut);
+int drude_set_params(int bond_type, double temp_core, double gamma_core, double temp_drude, double gamma_drude, double k, double mass_drude, double r_cut);
 
 // pre- or recalculate parameters for langevin cross terms
 //void drude_recalc_params();
@@ -92,9 +92,17 @@ inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *i
   double force_dist[3] = {0., 0., 0.};
 
   for (i=0;i<3;i++)  {
-    force_com[i] = -gamma_c/time_step*(mass_c*p1->m.v[i]+mass_d*p2->m.v[i])/mass_tot + sqrt(24.0*gamma_c/time_step*temp_c/mass_tot) * rnd_c[i];
-    force_dist[i] = -gamma_d/time_step*(p2->m.v[i] - p1->m.v[i])                     + sqrt(24.0*gamma_d/time_step*temp_d/mass_red) * rnd_d[i];
+//    force_com[i] = -gamma_c/time_step*(mass_c*p1->m.v[i]+mass_d*p2->m.v[i])/mass_tot + sqrt(24.0*gamma_c/time_step*temp_c/mass_tot) * rnd_c[i];
+//    force_dist[i] = -gamma_d/time_step*(p2->m.v[i] - p1->m.v[i])                     + sqrt(24.0*gamma_d/time_step*temp_d/mass_red) * rnd_d[i];
+    force_com[i]  = -gamma_c/time_step*(mass_c*p1->m.v[i]+mass_d*p2->m.v[i]) + sqrt(24.0*gamma_c/time_step*temp_c*mass_tot) * rnd_c[i];
+    force_dist[i] = -gamma_d/time_step*(p2->m.v[i] - p1->m.v[i])*mass_red    + sqrt(24.0*gamma_d/time_step*temp_d*mass_red) * rnd_d[i];
   }
+
+/*
+  langevin_pref1 = ;
+  langevin_pref2 = ;
+  p->f.f[j] = -langevin_gamma/time_step*p->m.v[j]*PMASS(*p) + sqrt(24.0*temperature*langevin_gamma/time_step)*(d_random()-0.5)*massf;
+*/
 
   if ((iaparams->p.drude.r_cut > 0.0) && (dist > iaparams->p.drude.r_cut)) 
     return 1;
@@ -110,13 +118,15 @@ inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *i
     for(i=0;i<3;i++) dx[i] = d_random()-0.5;
     fac_harmonic *= dist / sqrt(sqrlen(dx));
   }
-    
+  
+  //Forces on core  
   for (i=0;i<3;i++)  {
      force_harmonic[i] = fac_harmonic*dx[i];
      force_subt_elec[i] = -coulomb.prefactor * chgfac * dx[i] / dist / dist2;
      force1[i] = mass_c/mass_tot*force_com[i] - force_dist[i] + force_harmonic[i] + force_subt_elec[i];
   }
 
+  //Forces on drude
   for (i=0;i<3;i++)  {
      force2[i] = mass_d/mass_tot*force_com[i] + force_dist[i] - force_harmonic[i] - force_subt_elec[i];
   }

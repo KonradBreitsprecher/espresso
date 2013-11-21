@@ -343,6 +343,8 @@ inline void add_bonded_energy(Particle *p1)
     case BONDED_IA_SUBT_ELEC:
       bond_broken = subt_elec_pair_energy(p1, p2, dx, &ret);
       break;
+#endif
+#ifdef DRUDE
     case BONDED_IA_DRUDE:
       bond_broken = drude_energy(p1, p2,iaparams, dx, &ret);
       break;

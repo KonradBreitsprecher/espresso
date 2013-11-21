@@ -26,9 +26,9 @@
 #include "drude.hpp"
 #include "communication.hpp"
 
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
 
-int drude_set_params(int bond_type, double temp_core, double gamma_core, double temp_drude, double gamma_drude, double k, double mass_red_drude, double r_cut)
+int drude_set_params(int bond_type, double temp_core, double gamma_core, double temp_drude, double gamma_drude, double k, double mass_drude, double r_cut)
 {
   if(bond_type < 0)
     return ES_ERROR;
@@ -40,7 +40,7 @@ int drude_set_params(int bond_type, double temp_core, double gamma_core, double 
   bonded_ia_params[bond_type].p.drude.temp_drude = temp_drude;
   bonded_ia_params[bond_type].p.drude.gamma_drude = gamma_drude;
   bonded_ia_params[bond_type].p.drude.k = k;
-  bonded_ia_params[bond_type].p.drude.mass_red_drude = mass_red_drude;
+  bonded_ia_params[bond_type].p.drude.mass_drude = mass_drude;
   bonded_ia_params[bond_type].p.drude.r_cut = r_cut;
 
   bonded_ia_params[bond_type].type = BONDED_IA_DRUDE;

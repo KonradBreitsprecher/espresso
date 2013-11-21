@@ -521,8 +521,7 @@ void p3m_charge_assign()
     p  = cell->part;
     np = cell->n;
     for(i = 0; i < np; i++) {
-      if( p[i].p.q != 0.0
-	  ) {
+      if( p[i].p.q != 0.0 ) {
 	p3m_assign_charge(p[i].p.q, p[i].r.p, cp_cnt);
 	cp_cnt++;
       }

@@ -101,6 +101,7 @@ SOFT_SPHERE
 HAT
 GAY_BERNE		implies ROTATION
 OVERLAPPED
+DRUDE			requires ELECTROSTATICS and LANGEVIN_PER_PARTICLE and MASS
 
 /* Fluid-Structure Interactions (object in fluid) */
 AREA_FORCE_GLOBAL

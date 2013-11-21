@@ -50,7 +50,7 @@ inline int calc_subt_elec_pair_force(Particle *p1, Particle *p2, double d[3], do
   double dist2 = sqrlen(d);
   double dist = sqrt(dist2);
   int j;
-  double fac1,fac2, adist, erfc_part_ri;
+//  double fac1,fac2, adist, erfc_part_ri;
   double chgfac = p1->p.q*p2->p.q;
 /*
   dist2 = pow(p1->r.p[0]-p2->r.p[0],2)+pow(p1->r.p[1]-p2->r.p[1],2)+pow(p1->r.p[2]-p2->r.p[2],2);

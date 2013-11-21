@@ -686,7 +686,7 @@ typedef struct {
       double r2;
     } subt_lj;  
 #endif
-#if defined(ELECTROSTATICS) && defined(LANGEVIN_PER_PARTICLE) && defined(MASS)
+#ifdef DRUDE
     /** Parameters for drude bond **/
     struct {
       double temp_core;
@@ -694,7 +694,7 @@ typedef struct {
       double temp_drude;
       double gamma_drude;
       double k;
-      double mass_red_drude;
+      double mass_drude;
       double r_cut;
     } drude;
 #endif

@@ -81,12 +81,10 @@ proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization }
         }
 
 	set k_drude [lindex [inter $bondId_drude] 7]
-	set mass_red_drude [lindex [inter $bondId_drude] 8]
+	set mass_drude [lindex [inter $bondId_drude] 8]
 	
 	set q_core [part $id_core print q]
 	set mass_core [part $id_core print mass]
-
-	set mass_drude [expr $mass_red_drude*$mass_core]
 
 	if {$q_core > 0} {
 		set sign_q 1.0
@@ -101,9 +99,9 @@ proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization }
 	set drude_px [expr [lindex [part $id_core print pos] 0] + [t_random]*$polarization]
 	set drude_py [expr [lindex [part $id_core print pos] 1] + [t_random]*$polarization]
 	set drude_pz [expr [lindex [part $id_core print pos] 2] + [t_random]*$polarization]
-	part $id_drude pos $drude_px $drude_py $drude_pz q $q_drude type $type_drude mass $mass_drude temp 0 gamma 0
+	part $id_drude pos $drude_px $drude_py $drude_pz v 0 0 0  q $q_drude type $type_drude mass $mass_drude temp 0 gamma 0
 	part $id_core bond $bondId_drude $id_drude
 	#part $id_core bond $bondId_subt_elec_hdfkj4hrkjfy $id_drude
 
-	return "Drude particle created with parameters:\nid: $id_drude\ncharge: $q_drude\nmass: $mass_drude\n$warnings"
+	return "Drude particle created with parameters:\nid: $id_drude\ncharge: $q_drude\nmass: $mass_drude\nCore parameters changed to:\nMass: [expr $mass_core-$mass_drude]\nCharge:[expr $q_core - $q_drude]\n$warnings"
 }
