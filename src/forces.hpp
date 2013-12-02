@@ -515,11 +515,11 @@ inline void add_bonded_force(Particle *p1)
     case BONDED_IA_SUBT_ELEC:
       bond_broken = calc_subt_elec_pair_force(p1, p2, dx, force);
       break;
-#ifdef LANGEVIN_PER_PARTICLE
+#endif
+#ifdef DRUDE
     case BONDED_IA_DRUDE:
       bond_broken = calc_drude_forces(p1, p2, iaparams, dx, force, force2);
       break;
-#endif
 #endif
 #ifdef BOND_ANGLE_OLD
 	/* the first case is not needed and should not be called */ 

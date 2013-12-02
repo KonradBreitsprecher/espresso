@@ -364,6 +364,8 @@ int tclprint_to_result_BondedIA(Tcl_Interp *interp, int i)
 #ifdef ELECTROSTATICS
   case BONDED_IA_SUBT_ELEC:
     return tclprint_to_result_subt_elecIA(interp);
+#endif
+#ifdef DRUDE
   case BONDED_IA_DRUDE:
     return tclprint_to_result_drudeIA(interp, params);
 #endif
@@ -959,6 +961,8 @@ int tclcommand_inter_parse_bonded(Tcl_Interp *interp,
 #endif
 #ifdef ELECTROSTATICS
   REGISTER_BONDED("subt_elec", tclcommand_inter_parse_subt_elec);
+#endif
+#ifdef DRUDE
   REGISTER_BONDED("drude", tclcommand_inter_parse_drude);
 #endif
 #ifdef BOND_ANGLE_OLD
