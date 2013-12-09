@@ -28,13 +28,15 @@ ESSCRIPTS = \
 	bundle.tcl \
 	countBonds.tcl \
 	dielectrics.tcl \
+	drude_particle.tcl \
 	gibbs_ghmc.tcl \
 	parallel_tempering.tcl \
 	pdb.tcl \
 	polymer.tcl \
 	statistics.tcl \
 	vtf.tcl \
-	vtk.tcl
+	vtk.tcl \
+	object_in_fluid.tcl
 
 EXTRA_DIST=$(ESSCRIPTS)
 
