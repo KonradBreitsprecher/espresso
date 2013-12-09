@@ -63,7 +63,7 @@ int drude_set_params(int bond_type, double temp_core, double gamma_core, double 
 
 inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *iaparams, double dx[3], double force1[3], double force2[3])
 {
-
+	int dummy;
   int i;
   double fac_harmonic;
   double dist2 = sqrlen(dx);

@@ -159,7 +159,7 @@ void ELC_setup_constants()
 static void prepare_scx_cache()
 {
   int np, c, i, ic, freq, o;
-  double pref, arg;
+  double pref, arg ;
   Particle *part;
   
   for (freq = 1; freq <= n_scxcache; freq++) {
