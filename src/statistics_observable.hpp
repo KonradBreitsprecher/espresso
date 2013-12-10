@@ -56,6 +56,23 @@ int observable_stress_tensor(void* typelist, double* A, unsigned int n_A);
 int observable_stress_tensor_acf_obs(void* typelist, double* A, unsigned int n_A);
 int observable_com_position(void* idlist, double* A, unsigned int n_A);
 int observable_blocked_com_position(void* idlist, double* A, unsigned int n_A);
+int observable_molecule_orientation(void* params, double* A, unsigned int n_A);
+
+typedef struct {
+  IntList* id_list;
+  double axisx;
+  double axisy;
+  double axisz;
+  double minx;
+  double maxx;
+  double miny;
+  double maxy;
+  double minz;
+  double maxz;
+  int xbins;
+  int ybins;
+  int zbins;
+} orientation_data;
 
 #ifdef ELECTROSTATICS
 int observable_particle_currents(void* typelist, double* A, unsigned int n_A);
@@ -81,6 +98,7 @@ typedef struct {
 input parameters are passed via struct iw_params
 */
 int observable_interacts_with(void* params, double* A, unsigned int n_A);
+
 typedef struct {
   double cutoff;
   IntList *ids1;
@@ -92,6 +110,7 @@ typedef struct {
 int observable_obs_nothing (void* params, double* A, unsigned int n_A);
 
 int observable_flux_density_profile(void* params, double* A, unsigned int n_A);
+
 typedef struct { 
   IntList* id_list;
   double minx;
@@ -112,6 +131,7 @@ int observable_lb_velocity_profile(void* params, double* A, unsigned int n_A);
 int observable_radial_density_profile(void* params, double* A, unsigned int n_A);
 int observable_radial_flux_density_profile(void* params, double* A, unsigned int n_A);
 int observable_lb_radial_velocity_profile(void* params, double* A, unsigned int n_A);
+
 typedef struct {
   IntList* id_list;
   double minr;

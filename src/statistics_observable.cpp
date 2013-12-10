@@ -751,7 +751,53 @@ int observable_interacts_with (void* params_p, double* A, unsigned int n_A) {
   return 0;
 }
 
+int observable_molecule_orientation(void* pdata_, double* A, unsigned int n_A) {
+  int binx, biny, binz;
+  double compos[3],posFolded[3], a[3],b[3],c[3];
+  int img[3];
+  IntList* ids;
+  orientation_data* pdata;
+  sortPartCfg();
+  pdata=(orientation_data*) pdata_;
+  ids=pdata->id_list;
+  double bin_volume=(pdata->maxx-pdata->minx)*(pdata->maxy-pdata->miny)*(pdata->maxz-pdata->minz)/pdata->xbins/pdata->ybins/pdata->zbins;
+  double hitsCnt[n_A];
+  for (unsigned i = 0; i<n_A; i++ ) {
+    A[i]=0;
+    hitsCnt[i]=0;
+  }
 
+
+  for (int i = 0; i<ids->n; i+=4 ) {
+    if (ids->e[i] >= n_total_particles)
+      return 1;
+    memcpy(compos, partCfg[ids->e[i]].r.p, 3*sizeof(double));
+    memcpy(posFolded, partCfg[ids->e[i]].r.p, 3*sizeof(double));
+    memcpy(a, partCfg[ids->e[i+1]].r.p, 3*sizeof(double));
+    memcpy(b, partCfg[ids->e[i+2]].r.p, 3*sizeof(double));
+    memcpy(c, partCfg[ids->e[i+3]].r.p, 3*sizeof(double));
+    memcpy(img, partCfg[ids->e[i]].l.i, 3*sizeof(int));
+    fold_position(posFolded, img);
+    binx= (int) floor( pdata->xbins*  (posFolded[0]-pdata->minx)/(pdata->maxx-pdata->minx));
+    biny= (int) floor( pdata->ybins*  (posFolded[1]-pdata->miny)/(pdata->maxy-pdata->miny));
+    binz= (int) floor( pdata->zbins*  (posFolded[2]-pdata->minz)/(pdata->maxz-pdata->minz));
+    if (binx>=0 && binx < pdata->xbins && biny>=0 && biny < pdata->ybins && binz>=0 && binz < pdata->zbins) {
+    	int threeCompToOne = binx*pdata->ybins*pdata->zbins + biny*pdata->zbins + binz;
+    	hitsCnt[threeCompToOne] += 1;
+      A[threeCompToOne] /= hitsCnt[threeCompToOne];
+      double nv[3] = {a[2] * b[1]-a[1] * b[2]-a[2] * c[1]+b[2] * c[1]+a[1] * c[2]-b[1] * c[2],
+      											 -a[2] * b[0]+a[0] * b[2]+a[2] * c[0]-b[2] * c[0]-a[0] * c[2]+b[0]  * c[2],
+      											 a[1] * b[0]-a[0] * b[1]-a[1] * c[0]+b[1] * c[0]+a[0] * c[1]-b[0] * c[1] };
+
+      double angle = acos((nv[0]*pdata->axisx+nv[1]*pdata->axisy+nv[2]*pdata->axisz) / sqrt(nv[0]*nv[0]+nv[1]*nv[1]+nv[2]*nv[2]));
+      A[threeCompToOne]+= angle / hitsCnt[threeCompToOne];
+      //printf("angle %f \n",angle);  fflush(stdout);
+
+    }
+  }
+
+  return 0;
+}
 
 
 
