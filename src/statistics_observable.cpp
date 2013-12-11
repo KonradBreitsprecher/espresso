@@ -789,10 +789,12 @@ int observable_molecule_orientation(void* pdata_, double* A, unsigned int n_A) {
       											 -a[2] * b[0]+a[0] * b[2]+a[2] * c[0]-b[2] * c[0]-a[0] * c[2]+b[0]  * c[2],
       											 a[1] * b[0]-a[0] * b[1]-a[1] * c[0]+b[1] * c[0]+a[0] * c[1]-b[0] * c[1] };
 
-      double angle = acos((nv[0]*pdata->axisx+nv[1]*pdata->axisy+nv[2]*pdata->axisz) / sqrt(nv[0]*nv[0]+nv[1]*nv[1]+nv[2]*nv[2]));
-      A[threeCompToOne]+= angle / hitsCnt[threeCompToOne];
+      //double angle = acos((nv[0]*pdata->axisx+nv[1]*pdata->axisy+nv[2]*pdata->axisz) / sqrt(nv[0]*nv[0]+nv[1]*nv[1]+nv[2]*nv[2]));
+      //A[threeCompToOne]+= angle / hitsCnt[threeCompToOne];
       //printf("angle %f \n",angle);  fflush(stdout);
-
+      double argu = (nv[0]*pdata->axisx+nv[1]*pdata->axisy+nv[2]*pdata->axisz) / sqrt(nv[0]*nv[0]+nv[1]*nv[1]+nv[2]*nv[2]);
+      double second_legendre = 1.5*argu*argu-0.5;
+      A[threeCompToOne]+= second_legendre / hitsCnt[threeCompToOne];
     }
   }
 
