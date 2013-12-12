@@ -95,6 +95,7 @@ int parse_id_list(Tcl_Interp* interp, int argc, char** argv, int* change, IntLis
 
 int tclcommand_parse_profile(Tcl_Interp* interp, int argc, char** argv, int* change, int* dim_A, profile_data** pdata_);
 int tclcommand_parse_radial_profile(Tcl_Interp* interp, int argc, char** argv, int* change, int* dim_A, radial_profile_data** pdata);
+int tclcommand_parse_molecule_orientation(Tcl_Interp* interp, int argc, char** argv, int* change, int* dim_A, orientation_data** pdata);
 int sf_print_usage(Tcl_Interp* interp);
 
 
@@ -737,6 +738,21 @@ int tclcommand_observable_interacts_with(Tcl_Interp* interp, int argc, char** ar
 
 
 
+int tclcommand_observable_molecule_orientation(Tcl_Interp* interp, int argc, char** argv, int* change, observable* obs) {
+	int temp;
+	orientation_data* pdata;
+	obs->fun = &observable_molecule_orientation;
+	if (!tclcommand_parse_molecule_orientation(interp, argc-1, argv+1, &temp, &obs->n, &pdata) == TCL_OK )
+		return TCL_ERROR;
+	if (pdata->id_list==0) {
+		Tcl_AppendResult(interp, "Error in molecule orientation observable: particle ids/types not specified\n" , (char *)NULL);
+		return TCL_ERROR;
+	}
+	obs->args=(void*)pdata;
+	obs->n=pdata->xbins*pdata->ybins*pdata->zbins;
+	*change=1+temp;
+	return TCL_OK;
+}
 
 //  if (ARG0_IS_S("textfile")) {
 //    // We still can only handle full files
@@ -849,6 +865,7 @@ int tclcommand_observable(ClientData data, Tcl_Interp *interp, int argc, char **
     REGISTER_OBSERVABLE(flux_density_profile, tclcommand_observable_flux_density_profile,id);
     REGISTER_OBSERVABLE(lb_radial_velocity_profile, tclcommand_observable_lb_radial_velocity_profile,id);
     REGISTER_OBSERVABLE(tclcommand, tclcommand_observable_tclcommand,id);
+    REGISTER_OBSERVABLE(molecule_orientation, tclcommand_observable_molecule_orientation,id);
     Tcl_AppendResult(interp, "Unknown observable ", argv[2] ,"\n", (char *)NULL);
     return TCL_ERROR;
   }
@@ -1261,6 +1278,160 @@ int tclcommand_parse_radial_profile(Tcl_Interp* interp, int argc, char** argv, i
   else
     return TCL_OK;
 }
+
+int tclcommand_parse_molecule_orientation(Tcl_Interp* interp, int argc, char** argv, int* change, int* dim_A, orientation_data** pdata_) {
+  int temp;
+  *change=0;
+  orientation_data* pdata=(orientation_data*)malloc(sizeof(orientation_data));
+  *pdata_ = pdata;
+  pdata->id_list=0;
+  pdata->axisx=0;
+  pdata->axisy=0;
+  pdata->axisz=1;
+  pdata->minx=0;
+  pdata->maxx=box_l[0];
+  pdata->xbins=1;
+  pdata->miny=0;
+  pdata->maxy=box_l[1];
+  pdata->ybins=1;
+  pdata->minz=0;
+  pdata->maxz=box_l[2];
+  pdata->zbins=1;
+  while (argc>0) {
+    if (ARG0_IS_S("ids")) {
+      if (!parse_id_list(interp, argc, argv, &temp, &pdata->id_list )==TCL_OK) {
+        Tcl_AppendResult(interp, "Error parsing particle id information\n" , (char *)NULL);
+        return TCL_ERROR;
+      } else {
+        *change+=temp;
+        argc-=temp;
+        argv+=temp;
+      }
+    } else if ( ARG0_IS_S("axisx")){
+    	if (argc>1 && ARG1_IS_D(pdata->axisx)) {
+				argc-=2;
+				argv+=2;
+				*change+=2;
+			} else {
+				Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read axisx\n" , (char *)NULL);
+				return TCL_ERROR;
+			}
+    } else if ( ARG0_IS_S("axisy")){
+			if (argc>1 && ARG1_IS_D(pdata->axisy)) {
+				argc-=2;
+				argv+=2;
+				*change+=2;
+			} else {
+				Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read axisy\n" , (char *)NULL);
+				return TCL_ERROR;
+			}
+    } else if ( ARG0_IS_S("axisz")){
+			if (argc>1 && ARG1_IS_D(pdata->axisz)) {
+				argc-=2;
+				argv+=2;
+				*change+=2;
+			} else {
+				Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read axisz\n" , (char *)NULL);
+				return TCL_ERROR;
+			}
+    } else if ( ARG0_IS_S("minx")){
+      if (argc>1 && ARG1_IS_D(pdata->minx)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read minx\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if ( ARG0_IS_S("maxx") ) {
+      if (argc>1 && ARG1_IS_D(pdata->maxx)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read maxx\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if (ARG0_IS_S("xbins")) {
+      if (argc>1 && ARG1_IS_I(pdata->xbins)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read nbins\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else if ( ARG0_IS_S("miny")){
+      if (argc>1 && ARG1_IS_D(pdata->miny)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read miny\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if ( ARG0_IS_S("maxy") ) {
+      if (argc>1 && ARG1_IS_D(pdata->maxy)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read maxy\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if (ARG0_IS_S("ybins")) {
+      if (argc>1 && ARG1_IS_I(pdata->ybins)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read nbins\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else if ( ARG0_IS_S("minz")){
+      if (argc>1 && ARG1_IS_D(pdata->minz)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read minz\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if ( ARG0_IS_S("maxz") ) {
+      if (argc>1 && ARG1_IS_D(pdata->maxz)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read maxz\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else  if (ARG0_IS_S("zbins")) {
+      if (argc>1 && ARG1_IS_I(pdata->zbins)) {
+        argc-=2;
+        argv+=2;
+        *change+=2;
+      } else {
+        Tcl_AppendResult(interp, "Error in molecule orientation observable: could not read nbins\n" , (char *)NULL);
+        return TCL_ERROR;
+      }
+    } else {
+      Tcl_AppendResult(interp, "Error in molecule orientation observable: cannot understand argument ", argv[0], "\n" , (char *)NULL);
+      return TCL_ERROR;
+    }
+  }
+
+  temp=0;
+  if (pdata->xbins <= 0 || pdata->ybins <=0 || pdata->zbins <= 0) {
+    Tcl_AppendResult(interp, "Error in molecule orientation observable: the bin number in each direction must be >=1\n" , (char *)NULL);
+    temp=1;
+  }
+  if (temp)
+    return TCL_ERROR;
+  else
+    return TCL_OK;
+}
+
 
 int tclcommand_observable_print(Tcl_Interp* interp, int argc, char** argv, int* change, observable* obs) {
   char buffer[TCL_DOUBLE_SPACE];
