@@ -143,3 +143,32 @@ void thermo_cool_down()
 #endif
 }
 
+void thermo_add_forces_and_torques()
+{
+  Cell *cell;
+  Particle *p;
+  int np, c, i;
+
+  /* The force initialization depends on the used thermostat and the
+     thermodynamic ensemble */
+
+#ifdef NPT
+  /* reset virial part of instantaneous pressure */
+  if(integ_switch == INTEG_METHOD_NPT_ISO)
+    nptiso.p_vir[0] = nptiso.p_vir[1] = nptiso.p_vir[2] = 0.0;
+#endif
+
+
+  /* initialize forces with langevin thermostat forces
+     or zero depending on the thermostat
+     set torque to zero for all and rescale quaternions
+  */
+  for (c = 0; c < local_cells.n; c++) {
+    cell = local_cells.cell[c];
+    p  = cell->part;
+    np = cell->n;
+    for (i = 0; i < np; i++)
+    	add_friction_thermo_langevin(&p[i]);
+  }
+}
+

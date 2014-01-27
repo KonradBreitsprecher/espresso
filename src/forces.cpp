@@ -149,6 +149,9 @@ void force_calc()
 #if defined(LB_GPU) || (defined(ELECTROSTATICS) && defined(CUDA))
   copy_forces_from_GPU();
 #endif
+
+if ( thermo_switch & THERMO_LANGEVIN )
+  thermo_add_forces_and_torques();
   
 /* this must be the last force to be calculated (Mehmet)*/
 #ifdef COMFIXED
@@ -252,7 +255,7 @@ inline void init_local_particle_force(Particle *part)
 #ifdef ADRESS
   double new_weight;
   if (ifParticleIsVirtual(part)) {
-    new_weight = adress_wf_vector(part->r.p);
+    new_weight = adress_wif_vector(part->r.p);
 #ifdef ADRESS_INIT
     double old_weight = part->p.adress_weight;
     
@@ -305,13 +308,13 @@ inline void init_local_particle_force(Particle *part)
     part->p.adress_weight=new_weight;
   }
 #endif
-  if ( thermo_switch & THERMO_LANGEVIN )
-    friction_thermo_langevin(part);
-  else {
+  //if ( thermo_switch & THERMO_LANGEVIN )
+  //friction_thermo_langevin(part);
+  //else {
     part->f.f[0] = 0;
     part->f.f[1] = 0;
     part->f.f[2] = 0;
-  }
+  //}
 
 #ifdef EXTERNAL_FORCES   
   if(part->l.ext_flag & PARTICLE_EXT_FORCE) {
@@ -415,7 +418,7 @@ void init_forces()
     for (i = 0; i < np; i++)
       init_local_particle_force(&p[i]);
   }
-  
+
 #ifdef ADRESS
 #ifdef ADRESS_INIT
   /* update positions of atoms reinitialized when crossing from CG to hybrid zone

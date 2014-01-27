@@ -97,6 +97,9 @@ void thermo_heat_up();
 /** pendant to \ref thermo_heat_up */
 void thermo_cool_down();
 
+/** add thermostat forces */
+void thermo_add_forces_and_torques();
+
 #ifdef NPT
 /** add velocity-dependend noise and friction for NpT-sims to the particle's velocity 
     @param dt_vj  j-component of the velocity scaled by time_step dt 
@@ -120,7 +123,7 @@ inline double friction_thermV_nptiso(double p_diff) {
 /** overwrite the forces of a particle with
     the friction term, i.e. \f$ F_i= -\gamma v_i + \xi_i\f$.
 */
-inline void friction_thermo_langevin(Particle *p)
+inline void add_friction_thermo_langevin(Particle *p)
 {
   extern double langevin_pref1, langevin_pref2;
 #ifdef LANGEVIN_PER_PARTICLE
@@ -169,7 +172,7 @@ inline void friction_thermo_langevin(Particle *p)
         else
           langevin_pref2_temp = sqrt(24.0*temperature*p->p.gamma/time_step);
         
-        p->f.f[j] = langevin_pref1_temp*p->m.v[j]*PMASS(*p) + langevin_pref2_temp*(d_random()-0.5)*massf;
+        p->f.f[j] += langevin_pref1_temp*p->m.v[j]*PMASS(*p) + langevin_pref2_temp*(d_random()-0.5)*massf;
       }
       else {
         if(p->p.T >= 0.)
@@ -177,10 +180,10 @@ inline void friction_thermo_langevin(Particle *p)
         else          
           langevin_pref2_temp = langevin_pref2;
         
-        p->f.f[j] = langevin_pref1*p->m.v[j]*PMASS(*p) + langevin_pref2_temp*(d_random()-0.5)*massf;
+        p->f.f[j] += langevin_pref1*p->m.v[j]*PMASS(*p) + langevin_pref2_temp*(d_random()-0.5)*massf;
       }
 #else
-      p->f.f[j] = langevin_pref1*p->m.v[j]*PMASS(*p) + langevin_pref2*(d_random()-0.5)*massf;
+      p->f.f[j] += langevin_pref1*p->m.v[j]*PMASS(*p) + langevin_pref2*(d_random()-0.5)*massf;
 #endif
     }
 #ifdef EXTERNAL_FORCES
