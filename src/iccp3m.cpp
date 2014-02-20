@@ -52,12 +52,11 @@ iccp3m_struct iccp3m_cfg;
 int iccp3m_initialized = 0;
 /* functions that are used in icc* to compute the electric field acting on the induced charges,
 * excluding forces other than the electrostatic ones */
-void init_forces_iccp3m();
+
 void calc_long_range_forces_iccp3m();
 inline void add_pair_iccp3m(PairList *pl, Particle *p1, Particle *p2);
 void resize_verlet_list_iccp3m(PairList *pl);
-inline void init_local_particle_force_iccp3m(Particle *part);
-inline void init_ghost_force_iccp3m(Particle *part);
+
 extern void on_particle_change();
 
 Cell *local_icc;
@@ -128,7 +127,7 @@ int bcast_iccp3m_cfg(void){
 }
 
 int iccp3m_iteration() {
-   double fdot,hold,hnew,hmax,del_eps,diff=0.0,difftemp=0.0, ex, ey, ez, l_b;
+   double fdot,hold,hnew,hmax,del_eps,diff=0.0,difftemp=0.0, ex, ey, ez, prefi;
    Cell *cell;
    int c,np;
    Particle *part;
@@ -139,13 +138,12 @@ int iccp3m_iteration() {
 
    iccp3m_sanity_check();
    
-   l_b = coulomb.bjerrum;
+   prefi = 1.0/(coulomb.prefactor*6.283185307);
    if((iccp3m_cfg.eout <= 0)) {
      errtxt = runtime_error(128);
      ERROR_SPRINTF(errtxt, "ICCP3M: nonpositive dielectric constant is not allowed. Put a decent tcl error here\n");
    }
-   
-   
+
    iccp3m_cfg.citeration=0;
    for(j=0;j<iccp3m_cfg.num_iteration;j++) {
      hmax=0.;
@@ -159,7 +157,8 @@ int iccp3m_iteration() {
          id = part[i].p.identity ;
          if( id < iccp3m_cfg.n_ic ) {
            /* the dielectric-related prefactor: */
-           del_eps = (iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.ein[id] + iccp3m_cfg.eout)/6.283185307;
+
+           del_eps = (iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.ein[id] + iccp3m_cfg.eout);
            /* calculate the electric field at the certain position */
            ex=part[i].f.f[0]/part[i].p.q;
            ey=part[i].f.f[1]/part[i].p.q;
@@ -183,7 +182,7 @@ int iccp3m_iteration() {
            hold=part[i].p.q/iccp3m_cfg.areas[id];
            /* determine if it is higher than the previously highest charge density */
            if(hold>fabs(hmax))hmax=fabs(hold);
-           f1 = (+del_eps*fdot/l_b);
+           f1 = (+del_eps*fdot*prefi);
            // double f2 = (1- 0.5*(iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] ))*(iccp3m_cfg.sigma[id]);
            if (iccp3m_cfg.sigma!=0) {
              f2 = (2*iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] )*(iccp3m_cfg.sigma[id]);
@@ -209,10 +208,11 @@ assigned charge= %f } \n",part[i].p.q);
              break;
            }
 
-           //if (id == 0)
-           //{
-           //	 printf("iteration %d, part 0, charge: %e, force: %e, ez: %e, posz: %e\n",j, part[i].p.q, part[i].f.f[2],ez, part[i].r.p[2]); fflush(stdout);
-           //}
+           if (id == 100)
+           {
+           	 printf("it %d, q: %e\n",j, part[i].p.q); fflush(stdout);
+           }
+
 
          }
        } /* cell particles */
@@ -244,8 +244,8 @@ convert_quat_to_dip_all();
 #endif
 
 */
+  init_forces();
 
-  init_forces_iccp3m();
   switch (cell_structure.type) {
   case CELL_STRUCTURE_LAYERED:
     layered_calculate_ia_iccp3m();
@@ -514,51 +514,6 @@ void nsq_calculate_ia_iccp3m()
   rebuild_verletlist = 0;
 }
 
-
-void init_forces_iccp3m()
-{
-  /* copied from forces.cpp */
-  Cell *cell;
-  Particle *p;
-  int np, c, i;
-
-  /* The force initialization depends on the used thermostat and the
-thermodynamic ensemble */
-
-#ifdef NPT
-  char* errtxt;
-  /* reset virial part of instantaneous pressure */
-  if(integ_switch == INTEG_METHOD_NPT_ISO){
-      errtxt = runtime_error(128);
-      ERROR_SPRINTF(errtxt, "{ICCP3M cannot be used with pressure coupling} ");
-  }
-#endif
-
-  /* initialize forces with langevin thermostat forces
-or zero depending on the thermostat
-set torque to zero for all and rescale quaternions
-*/
-  for (c = 0; c < local_cells.n; c++) {
-    cell = local_cells.cell[c];
-    p = cell->part;
-    np = cell->n;
-    for (i = 0; i < np; i++)
-      init_local_particle_force_iccp3m(&p[i]);
-  }
-
-  /* initialize ghost forces with zero
-set torque to zero for all and rescale quaternions
-*/
-  for (c = 0; c < ghost_cells.n; c++) {
-    cell = ghost_cells.cell[c];
-    p = cell->part;
-    np = cell->n;
-    for (i = 0; i < np; i++)
-      init_ghost_force_iccp3m(&p[i]);
-  }
-   
-}
-
 void calc_long_range_forces_iccp3m()
 {
 #ifdef ELECTROSTATICS
@@ -628,36 +583,6 @@ void resize_verlet_list_iccp3m(PairList *pl)
     pl->max -= diff*LIST_INCREMENT;
     pl->pair = (Particle **)realloc(pl->pair, 2*pl->max*sizeof(Particle *));
   }
-}
-
-/** initialize the forces for a real particle */
-inline void init_local_particle_force_iccp3m(Particle *part)
-{
-    part->f.f[0] = 0.0; /* no need to friction_thermo_langevin function */
-    part->f.f[1] = 0.0;
-    part->f.f[2] = 0.0;
-
-#ifdef ROTATION
-    /* set torque to zero */
-    part->f.torque[0] = 0;
-    part->f.torque[1] = 0;
-    part->f.torque[2] = 0;
-#endif
-}
-
-/** initialize the forces for a ghost particle */
-inline void init_ghost_force_iccp3m(Particle *part)
-{
-  part->f.f[0] = 0.0;
-  part->f.f[1] = 0.0;
-  part->f.f[2] = 0.0;
-
-#ifdef ROTATION
-  /* set torque to zero */
-  part->f.torque[0] = 0;
-  part->f.torque[1] = 0;
-  part->f.torque[2] = 0;
-#endif
 }
 
 /* integer mod*/

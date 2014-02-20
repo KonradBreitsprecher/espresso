@@ -141,20 +141,12 @@ inline void add_friction_thermo_langevin(Particle *p)
 #ifdef VIRTUAL_SITES
  #ifndef VIRTUAL_SITES_THERMOSTAT
     if (ifParticleIsVirtual(p))
-    {
-     for (j=0;j<3;j++)
-      p->f.f[j]=0;
-    return;
-   }
+    	return;
  #endif
 
  #ifdef THERMOSTAT_IGNORE_NON_VIRTUAL
     if (!ifParticleIsVirtual(p))
-    {
-     for (j=0;j<3;j++)
-      p->f.f[j]=0;
-    return;
-   }
+    	return;
  #endif
 #endif	  
 

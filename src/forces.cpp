@@ -60,10 +60,6 @@
 /** Calculate long range forces (P3M, MMM2d...). */
 void calc_long_range_forces();
 
-/** initialize real particle forces with thermostat forces and
-    ghost particle forces with zero. */
-void init_forces();
-
 /************************************************************/
 
 void force_calc()
@@ -85,12 +81,15 @@ void force_calc()
   if (lattice_switch & LATTICE_LB_GPU && transfer_momentum_gpu && this_node==0 ) lb_calc_particle_lattice_ia_gpu();
 #endif // LB_GPU
 
+
+
+
 #ifdef ELECTROSTATICS
   if (iccp3m_initialized && iccp3m_cfg.set_flag)
     iccp3m_iteration();
   else
 #endif
-    init_forces();
+  	init_forces();
 
   switch (cell_structure.type) {
   case CELL_STRUCTURE_LAYERED:
@@ -152,7 +151,11 @@ void force_calc()
 
 if ( thermo_switch & THERMO_LANGEVIN )
   thermo_add_forces_and_torques();
-  
+
+#ifdef EXTERNAL_FORCES
+	add_ext_force();
+#endif
+
 /* this must be the last force to be calculated (Mehmet)*/
 #ifdef COMFIXED
   calc_comfixed();
@@ -316,13 +319,6 @@ inline void init_local_particle_force(Particle *part)
     part->f.f[2] = 0;
   //}
 
-#ifdef EXTERNAL_FORCES   
-  if(part->l.ext_flag & PARTICLE_EXT_FORCE) {
-    part->f.f[0] += part->l.ext_force[0];
-    part->f.f[1] += part->l.ext_force[1];
-    part->f.f[2] += part->l.ext_force[2];
-  }
-#endif
   
 #ifdef ROTATION
   {
@@ -331,14 +327,6 @@ inline void init_local_particle_force(Particle *part)
     part->f.torque[0] = 0;
     part->f.torque[1] = 0;
     part->f.torque[2] = 0;
-
-    #ifdef EXTERNAL_FORCES
-      if(part->l.ext_flag & PARTICLE_EXT_TORQUE) {
-        part->f.torque[0] += part->l.ext_torque[0];
-        part->f.torque[1] += part->l.ext_torque[1];
-        part->f.torque[2] += part->l.ext_torque[2];
-      }
-    #endif
     
     /* and rescale quaternion, so it is exactly of unit length */	
     scale = sqrt( SQR(part->r.quat[0]) + SQR(part->r.quat[1]) +
@@ -443,6 +431,34 @@ void init_forces()
 #endif
 }
 
+void add_ext_force()
+{
+  Cell *cell;
+  Particle *p,*p1;
+  int np, c, i;
+
+  for (c = 0; c < local_cells.n; c++) {
+    cell = local_cells.cell[c];
+    p  = cell->part;
+    np = cell->n;
+    for (i = 0; i < np; i++)
+    {
+    	p1 = &p[i];
+			if(p1->l.ext_flag & PARTICLE_EXT_FORCE) {
+				p1->f.f[0] += p1->l.ext_force[0];
+				p1->f.f[1] += p1->l.ext_force[1];
+				p1->f.f[2] += p1->l.ext_force[2];
+			}
+#ifdef ROTATION
+			if(p1->l.ext_flag & PARTICLE_EXT_TORQUE) {
+				p1->f.torque[0] += p1->l.ext_torque[0];
+				p1->f.torque[1] += p1->l.ext_torque[1];
+				p1->f.torque[2] += p1->l.ext_torque[2];
+			}
+#endif
+    }
+  }
+}
 
 // This function is no longer called from force_calc().
 // The check was moved to rescale_fores() to avoid an additional iteration over all particles
