@@ -207,12 +207,12 @@ assigned charge= %f } \n",part[i].p.q);
              diff = 1e90; /* A very high value is used as error code */
              break;
            }
-
+/*
            if (id == 100)
            {
            	 printf("it %d, q: %e\n",j, part[i].p.q); fflush(stdout);
            }
-
+*/
 
          }
        } /* cell particles */

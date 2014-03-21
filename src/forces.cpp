@@ -149,7 +149,7 @@ void force_calc()
   copy_forces_from_GPU();
 #endif
 
-if ( thermo_switch & THERMO_LANGEVIN )
+if (thermo_switch & THERMO_LANGEVIN)
   thermo_add_forces_and_torques();
 
 #ifdef EXTERNAL_FORCES
