@@ -168,7 +168,7 @@ int iccp3m_iteration() {
            ex += iccp3m_cfg.extx;
            ey += iccp3m_cfg.exty;
            ez += iccp3m_cfg.extz;
-           
+
            if (ex == 0 && ey == 0 && ez == 0) {
              errtxt = runtime_error(128);
              ERROR_SPRINTF(errtxt, "ICCP3M found zero electric field on a charge. This must never happen");
