@@ -261,7 +261,7 @@ proc dielectric_hexagonal_wall { args } {
 
   set n_l1 [expr ($box_l_x + $box_l_y + $box_l_z)/$d1]
   set n_l2 [expr ($box_l_x + $box_l_y + $box_l_z)/$d2]
-  set area [expr $lattice_param*$lattice_param*0.5 ]
+  set area [expr $lattice_param*$lattice_param*sqrt(3.0)/4.0*3.0 ]
 
   set hcell [list [list 0 [expr $lattice_param * sqrt(3.0)*0.5]] [list [expr $lattice_param * 0.5] 0] [list [expr $lattice_param * 1.5] 0] [list [expr $lattice_param * 2.0] [expr $lattice_param * sqrt(3.0)*0.5]]]
 
@@ -292,7 +292,8 @@ proc dielectric_hexagonal_wall { args } {
       }
     }
   }
-  puts "Created dielectric hexagonal plane with $counter particles:\nn = \[$nx $ny $nz\], e1 = \[$e_1_x $e_1_y $e_1_z\], e2 = \[$e_2_x $e_2_y $e_2_z\]" 
+  puts "Created dielectric hexagonal plane with $counter particles:\nn = \[$nx $ny $nz\], e1 = \[$e_1_x $e_1_y $e_1_z\], e2 = \[$e_2_x $e_2_y $e_2_z\], areas = $area" 
+
 }
 
 
