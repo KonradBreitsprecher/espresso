@@ -533,7 +533,6 @@ int observable_radial_density_profile(void* pdata_, double* A, unsigned int n_A)
   double ppos[3];
   double r, phi, z;
   int img[3];
-  double bin_volume;
   IntList* ids;
   if (!sortPartCfg()) {
     char *errtxt = runtime_error(128);
@@ -564,8 +563,7 @@ int observable_radial_density_profile(void* pdata_, double* A, unsigned int n_A)
     binz  =(int)floor((z-pdata->minz)/zbinsize);
 
     if (binr>=0 && binr < pdata->rbins && binphi>=0 && binphi < pdata->phibins && binz>=0 && binz < pdata->zbins) {
-      bin_volume=PI*((pdata->minr+(binr+1)*rbinsize)*(pdata->minr+(binr+1)*rbinsize) - (pdata->minr+(binr)*rbinsize)*(pdata->minr+(binr)*rbinsize)) *zbinsize * phibinsize/2/PI;
-      A[binr*pdata->phibins*pdata->zbins + binphi*pdata->zbins + binz] += 1./bin_volume;
+      A[binr*pdata->phibins*pdata->zbins + binphi*pdata->zbins + binz] += 1./(PI*((pdata->minr+(binr+1)*rbinsize)*(pdata->minr+(binr+1)*rbinsize) - (pdata->minr+(binr)*rbinsize)*(pdata->minr+(binr)*rbinsize)) *zbinsize * phibinsize/2/PI);
     } 
   }
   return 0;
