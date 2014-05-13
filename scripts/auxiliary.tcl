@@ -354,11 +354,14 @@ proc prepare_vmd_connection { args } {
   puts $vmdout_file "mol load vsf $filename.vsf"
   puts $vmdout_file "rotate stop"
   puts $vmdout_file "mol modstyle 0 0 CPK 1.800000 0.300000 8.000000 6.000000"
-  puts $vmdout_file "mol modcolor 0 0 SegName"
+  puts $vmdout_file "mol modcolor 0 0 Charge"
   puts $vmdout_file "imd connect $hostname $port"
   puts $vmdout_file "imd transfer 1"
   puts $vmdout_file "imd keep 1"
   puts $vmdout_file "proc pbcsetup {} {pbc set \"[setmd box_l]\" -all}"
+  puts $vmdout_file "pbcsetup"
+  puts $vmdout_file "display projection Orthographic"
+
   
   # draw constraints  
   if {$draw_constraints != "0"} {
