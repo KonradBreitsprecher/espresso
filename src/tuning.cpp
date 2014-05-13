@@ -18,8 +18,8 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 */
-/** \file tuning.c
-    Implementation of tuning.h .
+/** \file tuning.cpp
+    Implementation of tuning.hpp .
 */
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -49,14 +49,14 @@ double time_force_calc(int default_samples)
   int rds = timing_samples > 0 ? timing_samples : default_samples;
   int i;
 
-  if (mpi_integrate(0))
+  if (mpi_integrate(0, 0))
     return -1;
 
   /* perform force calculation test */
   markTime();
   for (i = 0; i < rds; i++) {
     mpi_bcast_event(INVALIDATE_SYSTEM);
-    if (mpi_integrate(0))
+    if (mpi_integrate(0, 0))
       return -1;
   }
   markTime();

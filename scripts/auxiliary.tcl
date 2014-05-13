@@ -289,7 +289,7 @@ proc prepare_vmd_connection { args } {
   set filename "vmd"
   set wait 0
   set start 1
-  set hostname [exec hostname]
+  set hostname [info hostname]
   set draw_constraints 0
 
   # parse off filename, both for old and new style
@@ -354,14 +354,10 @@ proc prepare_vmd_connection { args } {
   puts $vmdout_file "mol load vsf $filename.vsf"
   puts $vmdout_file "rotate stop"
   puts $vmdout_file "mol modstyle 0 0 CPK 1.800000 0.300000 8.000000 6.000000"
-  puts $vmdout_file "mol modcolor 0 0 Charge"
+  puts $vmdout_file "mol modcolor 0 0 Name"
   puts $vmdout_file "imd connect $hostname $port"
   puts $vmdout_file "imd transfer 1"
   puts $vmdout_file "imd keep 1"
-  puts $vmdout_file "proc pbcsetup {} {pbc set \"[setmd box_l]\" -all}"
-  puts $vmdout_file "pbcsetup"
-  puts $vmdout_file "display projection Orthographic"
-
   
   # draw constraints  
   if {$draw_constraints != "0"} {
@@ -551,6 +547,9 @@ proc copy_particles { args } {
 		set args [lrange $args 3 end]
 	    }
 	    "shift" {
+                if {[llength $args] < 3} {
+                    error "copy_particles: shift requires 3 argumets, x-, y- and z-shift"
+                }
 		set shift [lrange $args 1 3]
 		set args [lrange $args 4 end]
 	    }
@@ -559,7 +558,7 @@ proc copy_particles { args } {
 	    }
 	}
     }
-    set parts [lsort -unique $parts]
+    set parts [lsort -integer -unique $parts]
 
     # copy loop.
     # step 1: all except bonds and exclusions
@@ -590,7 +589,7 @@ proc copy_particles { args } {
                 if {$element == "" || ![string is integer $element]} { break }
                 incr pend
             }
-            set partcmd [lreplace $partcmd $p $pend]
+            set partcmd [lreplace $partcmd $p [expr $pend - 1]]
         }
 
         # and set the new particle
@@ -631,4 +630,5 @@ proc copy_particles { args } {
             eval part $newid exclude $exclusions
         }
     }
+    return [array get newids]
 }

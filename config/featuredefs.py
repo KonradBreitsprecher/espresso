@@ -42,6 +42,8 @@ def toCPPExpr(expr):
 class defs:
     def __init__(self, filename):
         # complete set of all defined features
+        allfeatures = set()
+        # allfeatures minus externals and derived
         features = set()
         # list of implications (pairs of feature -> implied feature)
         implications = list()
@@ -67,7 +69,7 @@ class defs:
 
             # Register the feature
             feature = tokens.pop(0)
-            features.add(feature)
+            allfeatures.add(feature)
 
             # get the keyword
             if len(tokens) > 0:
@@ -94,7 +96,7 @@ class defs:
                         raise SyntaxError("<feature> external", line)
                     if feature in derived:
                         raise SyntaxError("External feature is already defined as derived above:", line);
-                    implied = set(map((lambda (x,y):y), implications))
+                    implied = set(map((lambda x_y:x_y[1]), implications))
                     if feature in implied:
                         raise SyntaxError("External feature is implied above:", line);
                     externals.add(feature)
@@ -122,8 +124,9 @@ class defs:
                         raise SyntaxError("<feature> notest", line)
                     notestfeatures.add(feature)
 
-        features = features.difference(derived)
+        features = allfeatures.difference(derived)
         features = features.difference(externals)
+        self.allfeatures = allfeatures
         self.features = features
         self.requirements = requirements
         self.implications = implications
@@ -149,7 +152,7 @@ class defs:
 
         # handle requirements
         featurevars=dict()
-        derived = map((lambda(x,y,z):x), self.derivations)
+        derived = list(map((lambda x_y_z:x_y_z[0]), self.derivations))
         allfeatures = self.features.union(derived, self.externals)
         for feature in allfeatures:
             featurevars[feature] = feature in newset

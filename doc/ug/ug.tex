@@ -49,6 +49,7 @@ index=totoc,                    % add the index to the TOC
 \usepackage{xspace}
 \usepackage{units}
 \usepackage[numbers]{natbib}
+\usepackage{enumitem}
 %\usepackage{showframe}          % Turn this on when debugging the
                                 % margin etc.
 
@@ -183,7 +184,7 @@ index=totoc,                    % add the index to the TOC
   \raggedright%
 }{}
 
-%% Layout thesyntax description box
+%% Layout the syntax description box
 \newsavebox{\theessyntaxbox}
 \newlength{\essyntaxboxheight}
 \newlength{\essyntaxboxdepth}
@@ -209,7 +210,7 @@ index=totoc,                    % add the index to the TOC
 \setcounter{essyntaxcounter}{0}
 \newenvironment{essyntax}{%
   \stepcounter{essyntaxcounter}%
-  \label{essyntax:\arabic{essyntaxcounter}}
+  \label{essyntax:\arabic{essyntaxcounter}}%
   % Create headings
   \minisec{Syntax}\nopagebreak%
   \smallskip\nopagebreak%
@@ -317,6 +318,7 @@ index=totoc,                    % add the index to the TOC
 \include{io}
 \include{aux}
 \include{lb}
+\include{electrokinetics}
 \include{fsi}
 \include{mbtools}
 

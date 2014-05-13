@@ -21,9 +21,9 @@
 #ifndef INTEGRATE_H
 #define INTEGRATE_H
 
-/** \file integrate.h    Molecular dynamics integrator.
+/** \file integrate.hpp    Molecular dynamics integrator.
  *
- *  For more information see \ref integrate.c "integrate.c".
+ *  For more information see \ref integrate.cpp "integrate.c".
 */
 
 #define INTEG_METHOD_NPT_ISO   0
@@ -69,13 +69,21 @@ extern double verlet_reuse;
 /************************************************************/
 /*@{*/
 
+/** check sanity of integrator params */
+void integrator_sanity_checks();
+
+/** check sanity of npt params */
+void integrator_npt_sanity_checks();
+
 /** Initialize the used thermodynamic Ensemble (NVT or NPT) */
 void integrate_ensemble_init();
 
 /** integrate with velocity verlet integrator.
     \param n_steps number of steps to integrate.
+    \param reuse_forces if nonzero, blindly trust
+    the forces still stored with the particles for the first time step.
  */
-void integrate_vv(int n_steps);
+void integrate_vv(int n_steps, int reuse_forces);
 
 /** function that rescales all velocities on one node according to a
     new time step. */
