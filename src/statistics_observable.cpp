@@ -853,7 +853,7 @@ int observable_molecule_orientation(void* pdata_, double* A, unsigned int n_A) {
 
 
   for (int i = 0; i<ids->n; i+=4 ) {
-    if (ids->e[i] >= n_total_particles)
+    if (ids->e[i] >= n_part)
       return 1;
     memcpy(compos, partCfg[ids->e[i]].r.p, 3*sizeof(double));
     memcpy(posFolded, partCfg[ids->e[i]].r.p, 3*sizeof(double));
