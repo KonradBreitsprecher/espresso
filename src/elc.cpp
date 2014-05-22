@@ -332,13 +332,13 @@ static void add_dipole_force()
       gblcblk[1] += part[i].p.q*part[i].r.p[2];
 
       if(elc_params.dielectric_contrast_on) {
-	if(part[i].r.p[2]<elc_params.space_layer) {
-	  gblcblk[0] +=elc_params.di_mid_bot*part[i].p.q*(-part[i].r.p[2] - shift);
-	}
+				if(part[i].r.p[2]<elc_params.space_layer) {
+					gblcblk[0] +=elc_params.di_mid_bot*part[i].p.q*(-part[i].r.p[2] - shift);
+				}
 
-	if(part[i].r.p[2]>(elc_params.h-elc_params.space_layer)) {
-	  gblcblk[0] +=elc_params.di_mid_top*part[i].p.q*(2*elc_params.h-part[i].r.p[2] - shift);
-	}
+				if(part[i].r.p[2]>(elc_params.h-elc_params.space_layer)) {
+					gblcblk[0] +=elc_params.di_mid_top*part[i].p.q*(2*elc_params.h-part[i].r.p[2] - shift);
+				}
       }
     }
   }
@@ -480,18 +480,18 @@ static double dipole_energy()
 
       gblcblk[0] = 0;  gblcblk[1] = 0;
       for (c = 0; c < local_cells.n; c++) {
-	np   = local_cells.cell[c]->n;
-	part = local_cells.cell[c]->part;
-	for (i = 0; i < np; i++) {
-	  if(part[i].r.p[2]<elc_params.space_layer) {
-	    gblcblk[0] +=elc_params.di_mid_bot*part[i].p.q;
-	    gblcblk[1] +=elc_params.di_mid_bot*part[i].p.q*(SQR(-part[i].r.p[2]-shift));
-	  }
-	  if(part[i].r.p[2]>(elc_params.h-elc_params.space_layer)) {
-	    gblcblk[0] +=elc_params.di_mid_top*part[i].p.q;
-	    gblcblk[1] +=elc_params.di_mid_top*part[i].p.q*(SQR(2*elc_params.h-part[i].r.p[2]-shift));
-	  }
-	}
+				np   = local_cells.cell[c]->n;
+				part = local_cells.cell[c]->part;
+				for (i = 0; i < np; i++) {
+					if(part[i].r.p[2]<elc_params.space_layer) {
+						gblcblk[0] +=elc_params.di_mid_bot*part[i].p.q;
+						gblcblk[1] +=elc_params.di_mid_bot*part[i].p.q*(SQR(-part[i].r.p[2]-shift));
+					}
+					if(part[i].r.p[2]>(elc_params.h-elc_params.space_layer)) {
+						gblcblk[0] +=elc_params.di_mid_top*part[i].p.q;
+						gblcblk[1] +=elc_params.di_mid_top*part[i].p.q*(SQR(2*elc_params.h-part[i].r.p[2]-shift));
+					}
+				}
       }
       distribute(2);
     

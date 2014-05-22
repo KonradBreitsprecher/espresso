@@ -158,7 +158,7 @@ proc dielectric_hexagonal_wall { args } {
   set s1 0
   set s2 0
   set lattice_param 1.0
-  set is_icc 1
+  set is_icc 0
   for { set argno 0 } { $argno < [ llength $args ] } { } {
     if { [ lindex $args $argno ] == "dist" } {
       incr argno
@@ -277,7 +277,7 @@ proc dielectric_hexagonal_wall { args } {
 	if { $posx >= 0 && $posx < $box_l_x && $posy >= 0 && $posy < $box_l_y && $posz >= 0 && $posz < $box_l_z } {
 	  
 	  if {$is_icc == 1} {
-	    part [setmd n_part] pos $posx $posy $posz q [expr $sigma*$area +0.1*([ t_random ]-0.5)] fix 1 1 1 type $type
+	    part [setmd n_part] pos $posx $posy $posz q [expr $sigma*$area + 0.0001*([ t_random ]-0.5)] fix 1 1 1 type $type
 	    incr n_induced_charges
 	    lappend icc_normals [ list $nx $ny $nz ]
 	    lappend icc_areas $area

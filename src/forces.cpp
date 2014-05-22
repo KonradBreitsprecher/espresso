@@ -184,6 +184,21 @@ if (thermo_switch & THERMO_LANGEVIN)
 	add_ext_force();
 #endif
 
+  // VIRTUAL_SITES distribute forces
+#ifdef VIRTUAL_SITES
+  ghost_communicator(&cell_structure.collect_ghost_force_comm);
+  init_forces_ghosts();
+  distribute_mol_force();
+#endif
+
+  // Communication Step: ghost forces
+  ghost_communicator(&cell_structure.collect_ghost_force_comm);
+
+  // apply trap forces to trapped molecules
+#ifdef MOLFORCES         
+  calc_and_apply_mol_constraints();
+#endif
+
   // should be pretty late, since it needs to zero out the total force
 #ifdef COMFIXED
   calc_comfixed();
@@ -354,8 +369,7 @@ void init_forces()
 #endif
 
 
-  /* initialize forces with langevin thermostat forces
-     or zero depending on the thermostat
+  /* initialize forces with zero,
      set torque to zero for all and rescale quaternions
   */
   for (c = 0; c < local_cells.n; c++) {
