@@ -498,9 +498,9 @@ typedef struct {
   /** Method to treat coulomb interaction. See \ref COULOMB_NONE "Type codes for Coulomb" */
   int method;
 
-  /** Induced fiel (for const. potential feature) **/
+  /** Induced field (for const. potential feature) **/
   double field_induced;
-  /** Applied const. potential **/
+  /** Applied field (for const. potential feature) **/
   double field_applied;
 
  #endif
