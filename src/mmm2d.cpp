@@ -639,7 +639,7 @@ static void add_z_force()
   int size = 2;
   double field_tot=0;
 
-  /* total dipole moment term, for capacitor feature */
+  /* Const. potential: subtract global dipole moment */
   if (mmm2d_params.const_pot_on) {
     double gbl_dm_z = 0;
     double lcl_dm_z = 0;
@@ -648,17 +648,14 @@ static void add_z_force()
       int npl = local_cells.cell[c]->n;
       Particle *pl = local_cells.cell[c]->part;
       for (i = 0; i < npl; i++) {
-	lcl_dm_z += pl[i].p.q*(pl[i].r.p[2] + pl[i].l.i[2]*box_l[2]);
-//	lcl_dm_z += pl[i].p.q*pl[i].r.p[2];
+      	lcl_dm_z += pl[i].p.q*(pl[i].r.p[2] + pl[i].l.i[2]*box_l[2]);
       }
     }
     MPI_Allreduce(&lcl_dm_z, &gbl_dm_z, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-    //                     Global dipole moment to pot. diff.
-    coulomb.s_charge_induced = gbl_dm_z * coulomb.prefactor*4*M_PI*ux*uy*uz;
-    coulomb.s_charge_bare = mmm2d_params.pot_diff * uz;
 
-    field_tot = coulomb.s_charge_induced + coulomb.s_charge_bare;
-//  fprintf(stderr, "field_tot: %g \n", field_tot);
+    coulomb.field_induced = gbl_dm_z * coulomb.prefactor*4*M_PI*ux*uy*uz;
+    coulomb.field_applied = mmm2d_params.pot_diff * uz;
+    field_tot = coulomb.field_induced + coulomb.field_applied;
   }
 
   for (c = 1; c <= n_layers; c++) {
@@ -671,8 +668,6 @@ static void add_z_force()
       LOG_FORCES(fprintf(stderr, "%d: part %d force %10.3g %10.3g %10.3g\n",
 			 this_node, part[i].p.identity, part[i].f.f[0],
 			 part[i].f.f[1], part[i].f.f[2]));
-
-      
     }
   }
 }
@@ -1893,7 +1888,6 @@ void MMM2D_self_energy()
  * COMMON PARTS
  ****************************************/
 
-// (Konrad) Const. pot parameter setup
 int MMM2D_set_params(double maxPWerror, double far_cut, double delta_top, double delta_bot, int const_pot_on, double pot_diff)
 {
   int err;

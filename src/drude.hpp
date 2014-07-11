@@ -63,49 +63,40 @@ int drude_set_params(int bond_type, double temp_core, double gamma_core, double 
 
 inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *iaparams, double dx[3], double force1[3], double force2[3])
 {
-	int dummy;
-  int i;
-  double fac_harmonic;
-  double dist2 = sqrlen(dx);
+	int dummy,i;
+
+	double dist2 = sqrlen(dx);
   double dist = sqrt(dist2);
+
+  if ((iaparams->p.drude.r_cut > 0.0) && (dist > iaparams->p.drude.r_cut))
+    return 1;
+
   double force_harmonic[3] = {0., 0., 0.};
   double force_subt_elec[3] = {0., 0., 0.};
+  double force_com[3] = {0., 0., 0.};
+  double force_dist[3] = {0., 0., 0.};
+
   double chgfac = p1->p.q*p2->p.q;
 
+  double fac_harmonic = -iaparams->p.drude.k;
   double gamma_c = iaparams->p.drude.gamma_core;
   double gamma_d = iaparams->p.drude.gamma_drude;
-  double mass_c = p1->p.mass;
-  double mass_d = p2->p.mass;
   double temp_c = iaparams->p.drude.temp_core;
   double temp_d = iaparams->p.drude.temp_drude;
+
+  double mass_c = p1->p.mass;
+  double mass_d = p2->p.mass;
   double mass_tot = mass_d + mass_c;
   double mass_red = mass_d * mass_c / mass_tot;
-
-//fprintf(stderr, "t_d: %f   t_c: %f\n", temp_d, temp_c );
-//fprintf(stderr, "g_d: %f   g_c: %f\n", gamma_d, gamma_c );
-//fprintf(stderr, "m_d: %f   m_c: %f\n", mass_d, mass_c );
 
   double rnd_c[3] = { (d_random()-0.5), (d_random()-0.5), (d_random()-0.5) };
   double rnd_d[3] = { (d_random()-0.5), (d_random()-0.5), (d_random()-0.5) };
 
-  double force_com[3] = {0., 0., 0.};
-  double force_dist[3] = {0., 0., 0.};
-
   for (i=0;i<3;i++)  {
-//    force_com[i] = -gamma_c/time_step*(mass_c*p1->m.v[i]+mass_d*p2->m.v[i])/mass_tot + sqrt(24.0*gamma_c/time_step*temp_c/mass_tot) * rnd_c[i];
-//    force_dist[i] = -gamma_d/time_step*(p2->m.v[i] - p1->m.v[i])                     + sqrt(24.0*gamma_d/time_step*temp_d/mass_red) * rnd_d[i];
     force_com[i]  = -gamma_c/time_step*(mass_c*p1->m.v[i]+mass_d*p2->m.v[i]) + sqrt(24.0*gamma_c/time_step*temp_c*mass_tot) * rnd_c[i];
     force_dist[i] = -gamma_d/time_step*(p2->m.v[i] - p1->m.v[i])*mass_red    + sqrt(24.0*gamma_d/time_step*temp_d*mass_red) * rnd_d[i];
   }
 
-/*
-  langevin_pref1 = ;
-  langevin_pref2 = ;
-  p->f.f[j] = -langevin_gamma/time_step*p->m.v[j]*PMASS(*p) + sqrt(24.0*temperature*langevin_gamma/time_step)*(d_random()-0.5)*massf;
-*/
-
-  if ((iaparams->p.drude.r_cut > 0.0) && (dist > iaparams->p.drude.r_cut)) 
-    return 1;
 
 
   /* Apply forces: 
@@ -113,10 +104,15 @@ inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *i
      -Subtract electrostatics
      -Langevin thermostat on distance core-drude and com in lab coords result in cross terms for velocities and rnd kicks */
 
-  fac_harmonic = -iaparams->p.drude.k;
-  if (dist<ROUND_ERROR_PREC) {  /* dx[] == 0: the force is undefined. Let's use a random direction */
-    for(i=0;i<3;i++) dx[i] = d_random()-0.5;
-    fac_harmonic *= dist / sqrt(sqrlen(dx));
+
+  if (dist<ROUND_ERROR_PREC) {  /* dx[] == 0: the force is undefined. Let's use a random direction and no spring */
+    for(i=0;i<3;i++) {
+    	dx[i] = d_random()-0.5;
+    }
+  	dist2 = sqrlen(dx);
+  	dist = sqrt(dist2);
+    fac_harmonic = 0;
+    fprintf(stderr,"dist<ROUND_ERROR_PREC");
   }
   
   //Forces on core  
@@ -130,6 +126,15 @@ inline int calc_drude_forces(Particle *p1, Particle *p2, Bonded_ia_parameters *i
   for (i=0;i<3;i++)  {
      force2[i] = mass_d/mass_tot*force_com[i] + force_dist[i] - force_harmonic[i] - force_subt_elec[i];
   }
+
+  /*
+  fprintf(stderr,"Harmonic: %g %g %g\n", force_harmonic[0],force_harmonic[1],force_harmonic[2]);
+  fprintf(stderr,"Subt_elec: %g %g %g\n", force_subt_elec[0],force_subt_elec[1],force_subt_elec[2]);
+  fprintf(stderr,"Dist: %g %g %g\n", force_dist[0],force_dist[1],force_dist[2]);
+  fprintf(stderr,"Com: %g %g %g\n", force_com[0],force_com[1],force_com[2]);
+  fprintf(stderr,"mass_tot: %g\n", mass_tot);
+  fprintf(stderr,"Drude: %g %g %g\n", force2[0],force2[1],force2[2]);
+  */
 
   ONEPART_TRACE(if(p1->p.identity==check_id) fprintf(stderr,"%d: OPT: DRUDE f = (%.3e,%.3e,%.3e) with part id=%d \n",this_node,p1->f.f[0],p1->f.f[1],p1->f.f[2],p2->p.identity,dist));
   ONEPART_TRACE(if(p2->p.identity==check_id) fprintf(stderr,"%d: OPT: DRUDE f = (%.3e,%.3e,%.3e) with part id=%d \n",this_node,p2->f.f[0],p2->f.f[1],p2->f.f[2],p1->p.identity,dist));

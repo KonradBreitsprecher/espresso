@@ -70,7 +70,7 @@ proc dielectric_wall { args } {
     }
     if { [ lindex $args $argno ] == "type" } {
       incr argno
-      set type [ expr 1.0* [ lindex $args $argno ] ]
+      set type [ expr [ lindex $args $argno ] ]
       incr argno
       continue
     }
@@ -112,7 +112,7 @@ proc dielectric_wall { args } {
   set sq_sum [ expr $e_2_x*$e_2_x +  $e_2_y*$e_2_y + $e_2_z*$e_2_z ] 
 
 # We now go from -box_l to box_l in e1 and e2 direction and put particles 
-# in all positions that are in the within the box.
+# in all positions that are in the within the box.z
   set n_charges_l [ expr int(($box_l_x + $box_l_y + $box_l_z)/$res) ]
   set area [ expr $res*$res ]
   for { set i -$n_charges_l } { $i <= $n_charges_l } { incr i } {
@@ -134,7 +134,7 @@ proc dielectric_wall { args } {
     }
   }
  
-  puts "Created dielectric plane with $counter particles:\nn = \[$nx $ny $nz\], e1 = \[$e_1_x $e_1_y $e_1_z\], e2 = \[$e_2_x $e_2_y $e_2_z\]" 
+  puts "Created dielectric plane with $counter particles:\nn = \[$nx $ny $nz\], e1 = \[$e_1_x $e_1_y $e_1_z\], e2 = \[$e_2_x $e_2_y $e_2_z\], area [expr $counter * $area] " 
 
 }
 

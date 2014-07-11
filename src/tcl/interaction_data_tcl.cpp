@@ -839,8 +839,8 @@ int tclcommand_inter_print_partner_num(Tcl_Interp *interp, int bond_type)
 }
 
 #ifdef ELECTROSTATICS
-/* print surface charge for capacitor feature in ic-mmm2d and ic-elc */
-int tclcommand_print_surfacecharge(ClientData data, Tcl_Interp * interp, int argc, char ** argv)
+/* print applied/induced efields for capacitor feature in ic-mmm2d and ic-elc */
+int tclcommand_print_efield_capacitors(ClientData data, Tcl_Interp * interp, int argc, char ** argv)
 {
   char buffer[TCL_DOUBLE_SPACE + TCL_INTEGER_SPACE + 2];
   double value=0;
@@ -848,21 +848,21 @@ int tclcommand_print_surfacecharge(ClientData data, Tcl_Interp * interp, int arg
   if ((coulomb.method != COULOMB_MMM2D   && coulomb.method != COULOMB_ELC_P3M) ||
       (coulomb.method == COULOMB_MMM2D   && !mmm2d_params.const_pot_on)        ||
       (coulomb.method == COULOMB_ELC_P3M && !elc_params.const_pot_on)) {
-    Tcl_AppendResult(interp, "surface charges only available for mmm2d or p3m+elc with capacitor feature", (char *) NULL);
+    Tcl_AppendResult(interp, "Electric field output only available for mmm2d or p3m+elc with capacitor feature", (char *) NULL);
     return TCL_ERROR;
   }
   else if (argc > 2) {
-    Tcl_AppendResult(interp, "wrong # arguments: surfacecharge <{total} | {induced} | {bare}>", (char *) NULL);
+    Tcl_AppendResult(interp, "wrong # arguments: efield_caps <{total} | {induced} | {applied}>", (char *) NULL);
     return TCL_ERROR;
   }
   else if (argc == 1 || ARG1_IS_S("total")) {
-	value = coulomb.s_charge_induced + coulomb.s_charge_bare;
+	value = coulomb.field_induced + coulomb.field_applied;
   }
   else if (ARG1_IS_S("induced")) {
-	value = coulomb.s_charge_induced;
+	value = coulomb.field_induced;
   }
-  else if (ARG1_IS_S("bare")) {
-	value = coulomb.s_charge_bare;
+  else if (ARG1_IS_S("applied")) {
+	value = coulomb.field_applied;
   }
 
   Tcl_PrintDouble(interp, value, buffer);

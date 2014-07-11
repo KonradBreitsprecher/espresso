@@ -39,7 +39,6 @@ int tclprint_to_result_ELC(Tcl_Interp *interp)
   Tcl_AppendResult(interp, " ", buffer, (char *) NULL);
   if (!elc_params.neutralize)
     Tcl_AppendResult(interp, " noneutralization", (char *) NULL);
-  //(Konrad) Added prindout of const pot param
   if (elc_params.const_pot_on) {
     Tcl_PrintDouble(interp, elc_params.pot_diff, buffer);
     Tcl_AppendResult(interp, " capacitor ", buffer, (char *) NULL);
@@ -53,7 +52,6 @@ int tclprint_to_result_ELC(Tcl_Interp *interp)
   return TCL_OK;
 }
 
-//(Konrad) Added parameter parsing and {dielectric-contrasts <d1> <d2>} feature
 int tclcommand_inter_coulomb_parse_elc_params(Tcl_Interp * interp, int argc, char ** argv)
 {
   double pwerror;
@@ -110,14 +108,14 @@ int tclcommand_inter_coulomb_parse_elc_params(Tcl_Interp * interp, int argc, cha
 	  return TCL_ERROR;
         argc -= 3; argv += 3;
       }
-      else if (argc >= 1 && ARG0_IS_S("capacitor")) { //(Konrad) parse pot_diff
+      else if (argc >= 1 && ARG0_IS_S("capacitor")) {
 	if (!ARG_IS_D(1,pot_diff))
 	   return TCL_ERROR;
  	argc -= 2; argv += 2;
         const_pot_on = 1;
 	delta_top = -1; delta_bot = -1;
       }
-      else {											//(Konrad) Inconsistency on MMM2D dielectric-contrast setupm no 'dielectric-contrast DeltaTop DeltaBot'
+      else {
 	Tcl_AppendResult(interp, "either nothing or elc <pwerror> <minimal layer distance> {<cutoff>}  <{dielectric <di_top> <di_mid> <di_bottom>} | {dielectric-contrasts <d1> <d2>} | {capacitor <dU>}> {noneutralization} expected, not \"", argv[0], "\"", (char *)NULL);
 	return TCL_ERROR;
       }

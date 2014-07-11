@@ -50,7 +50,7 @@ typedef struct {
   int far_calculated;
   /// whether there is dielectric contrast
   int dielectric_contrast_on;
-  /// (Konrad) connected electrodes with applied potential
+  /// cont. potential parameters
   int const_pot_on;
   double pot_diff;
   /** dielectric contrasts at the bottom and top of the simulation cell */

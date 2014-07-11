@@ -101,6 +101,7 @@ libEspressoTcl_la_SOURCES += \
 	angle_cossquare_tcl.cpp angle_cossquare_tcl.hpp \
 	angledist_tcl.cpp angledist_tcl.hpp \
 	dihedral_tcl.cpp dihedral_tcl.hpp \
+	drude_tcl.cpp drude_tcl.hpp \
 	endangledist_tcl.cpp endangledist_tcl.hpp \
 	fene_tcl.cpp fene_tcl.hpp \
 	harmonic_tcl.cpp harmonic_tcl.hpp \

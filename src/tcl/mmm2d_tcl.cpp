@@ -39,7 +39,6 @@
 
 #ifdef ELECTROSTATICS
 
-// (Konrad) Const. pot parameter output
 int tclprint_to_result_MMM2D(Tcl_Interp *interp)
 {
   char buffer[TCL_DOUBLE_SPACE];
@@ -63,7 +62,6 @@ int tclprint_to_result_MMM2D(Tcl_Interp *interp)
   return TCL_OK;
 }
 
-// (Konrad) Const. pot parameter parsing
 int tclcommand_inter_coulomb_parse_mmm2d(Tcl_Interp * interp, int argc, char ** argv)
 {
   int err;

@@ -1,39 +1,8 @@
-#proc init_drude_bond { bondId_drude bondId_subt_elec temp_core gamma_core {k_drude 192.73} {temp_drude [expr $temp_core/300.0]} {gamma_drude [expr $gamma_core*15.0]} {mass_red_drude 0.1} } {
-
-	#PARAMETERS:
-	#--------------------------------------------------------------------------------
-	#bondId_drude:		?
-	#bondId_subt_elec:	?
-	#temp_core:		?
-	#gamma_core:		?
-        #k_drude:  		?
-	#temp_drude:		?
-	#gamma_drude:		?
-	#mass_red_drude:	?
-
-#	if {[string match "*LANGEVIN_PER_PARTICLE*" [code_info]] == 0 || [string match "*ELECTROSTATICS*" [code_info]] == 0 || [string match "*MASS*" [code_info]] == 0} {
-#		return "ERROR: Drude particle requires LANGEVIN_PER_PARTICLE, ELECTROSTATICS and MASS."
-#        }
-
-#	global bondId_drude_4s3jkhdf82hka
-#	global bondId_subt_elec_hdfkj4hrkjfy
-#	global k_drude_skjfhes34hkjss7
-#	global mass_red_drude_sdhk873iassl0
-
-#	set mass_red_drude_sdhk873iassl0 $mass_red_drude
-#	set k_drude_skjfhes34hkjss7 $k_drude
-#	set bondId_drude_4s3jkhdf82hka $bondId_drude
-#	set bondId_subt_elec_hdfkj4hrkjfy $bondId_subt_elec
-
-#        inter $bondId_drude drude $k_drude -1 $temp_core $gamma_core $temp_drude $gamma_drude
-#        inter $bondId_subt_elec subt_elec
-#}
-
 #To call first:
 
 #inter $bondId_drude drude $temp_core $gamma_core $temp_drude $gamma_drude $k_drude $mass_red_drude $r_cut
 
-proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization } {
+proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization initialSpread } {
 
 	#PARAMETERS:
 	#--------------------------------------------------------------------------------
@@ -80,11 +49,12 @@ proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization }
 		set warnings "WARNING: Particle with id $id_drude already exists."
         }
 
+	set gamma_core [lindex [inter $bondId_drude] 4]
+	set gamma_drude [lindex [inter $bondId_drude] 6]
 	set k_drude [lindex [inter $bondId_drude] 7]
-	set mass_drude [lindex [inter $bondId_drude] 8]
-	
-	set q_core [part $id_core print q]
 	set mass_core [part $id_core print mass]
+	set mass_drude [expr $mass_core * [lindex [inter $bondId_drude] 8]]
+	set q_core [part $id_core print q]
 
 	if {$q_core > 0} {
 		set sign_q 1.0
@@ -95,13 +65,22 @@ proc add_drude_to_core { bondId_drude id_core id_drude type_drude polarization }
 	set q_drude [expr $sign_q * pow($k_drude*$polarization, 1./2.)]
 
 	
-	part $id_core q [expr $q_core - $q_drude] mass [expr $mass_core-$mass_drude] temp 0 gamma 0
-	set drude_px [expr [lindex [part $id_core print pos] 0] + [t_random]*$polarization]
-	set drude_py [expr [lindex [part $id_core print pos] 1] + [t_random]*$polarization]
-	set drude_pz [expr [lindex [part $id_core print pos] 2] + [t_random]*$polarization]
-	part $id_drude pos $drude_px $drude_py $drude_pz v 0 0 0  q $q_drude type $type_drude mass $mass_drude temp 0 gamma 0
+	part $id_core mass [expr $mass_core-$mass_drude] q [expr $q_core - $q_drude] temp 0 gamma 0
+	set drude_px [expr [lindex [part $id_core print pos] 0] + 2.0*([t_random]-0.5)*$initialSpread]
+	set drude_py [expr [lindex [part $id_core print pos] 1] + 2.0*([t_random]-0.5)*$initialSpread]
+	set drude_pz [expr [lindex [part $id_core print pos] 2] + 2.0*([t_random]-0.5)*$initialSpread]
+	part $id_drude pos $drude_px $drude_py $drude_pz v 0 0 0 q $q_drude type $type_drude mass $mass_drude temp 0 gamma 0
 	part $id_core bond $bondId_drude $id_drude
 	#part $id_core bond $bondId_subt_elec_hdfkj4hrkjfy $id_drude
 
-	return "Drude particle created with parameters:\nid: $id_drude\ncharge: $q_drude\nmass: $mass_drude\nCore parameters changed to:\nMass: [expr $mass_core-$mass_drude]\nCharge:[expr $q_core - $q_drude]\n$warnings"
+	return "Drude particle created with parameters:\n\
+		id: $id_drude\n\
+		charge: $q_drude\n\
+		mass: $mass_drude\n\
+		Core charge changed to: [expr $q_core - $q_drude]\n\
+		Core mass changed to: [expr $mass_core-$mass_drude]\n\
+		Relaxation time drude thermostat: [expr $mass_drude/$gamma_drude]\n\
+		Period spring: [expr 2.0*[PI]*sqrt($mass_drude/$gamma_drude)]\n\
+		Relaxation time core thermostat: [expr ($mass_core-$mass_drude)/$gamma_core]\n\
+		$warnings"
 }

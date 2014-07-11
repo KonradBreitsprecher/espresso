@@ -59,7 +59,7 @@ typedef struct {
   /// dielectric prefactors
   double di_mid_top,di_mid_bot;
 
-  /// (Konrad) connected electrodes with applied potential
+  /// const. potential parameters
   int const_pot_on;
   double pot_diff;
 

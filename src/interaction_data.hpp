@@ -498,10 +498,10 @@ typedef struct {
   /** Method to treat coulomb interaction. See \ref COULOMB_NONE "Type codes for Coulomb" */
   int method;
 
-  /** (konrad) Induced surface charge (for capacitor feature) **/
-  double s_charge_induced;
-  /** Applied const. surface charge (for capacitor feature) **/ 
-  double s_charge_bare; 
+  /** Induced fiel (for const. potential feature) **/
+  double field_induced;
+  /** Applied const. potential **/
+  double field_applied;
 
  #endif
 

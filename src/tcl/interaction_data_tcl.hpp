@@ -43,7 +43,7 @@ int tclcommand_constraint(ClientData _data, Tcl_Interp *interp,
 int tclcallback_min_global_cut(Tcl_Interp *interp, void *_data);
 
 /* Print the surface charge for capacitor feature in ic-mmm2d and ic-elc */
-int tclcommand_print_surfacecharge(ClientData data, Tcl_Interp * interp,
+int tclcommand_print_efield_capacitors(ClientData data, Tcl_Interp * interp,
                int argc, char ** argv);
 
 

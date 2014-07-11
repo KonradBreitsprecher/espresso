@@ -174,11 +174,6 @@ inline void calc_bonded_force(Particle *p1, Particle *p2, Bonded_ia_parameters *
     case BONDED_IA_SUBT_ELEC:
       calc_subt_elec_pair_force(p1,p2,dx,force);
       break;
-/*(konrad) How to bond with asymm. forces ??
-    case BONDED_IA_DRUDE:
-      calc_drude_forces(p1,p2,dx,force,force2);
-      break;
-*/
 #endif
       /* since it is not clear at the moment how to handle a many body interaction here, I skip it */
     case BONDED_IA_ANGLE_HARMONIC:
