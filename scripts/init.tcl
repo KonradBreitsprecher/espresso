@@ -98,6 +98,7 @@ if { [ catch { set dummy $env(ESPRESSO_PACKAGES)} ] } {
 
 source countBonds.tcl
 source auxiliary.tcl
+source meshConstraint.tcl
 source blockfile_support.tcl
 source pdb.tcl
 source polymer.tcl

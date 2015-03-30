@@ -26,6 +26,7 @@ noinst_LTLIBRARIES = libEspresso.la
 # List the sources of the Espresso binary here
 # config-features.cpp must be at the beginning so that it is compiled first
 libEspresso_la_SOURCES = \
+	capacitor.cpp capacitor.hpp \
 	config-features.cpp \
 	cells.cpp cells.hpp \
 	collision.cpp collision.hpp \
@@ -95,6 +96,7 @@ libEspresso_la_SOURCES = \
 	statistics_observable.cpp statistics_observable.hpp \
 	statistics_wallstuff.cpp statistics_wallstuff.hpp \
 	thermostat.cpp thermostat.hpp \
+	triangleMesh.cpp triangleMesh.hpp \
 	topology.cpp topology.hpp \
 	tuning.cpp tuning.hpp \
 	utils.hpp \

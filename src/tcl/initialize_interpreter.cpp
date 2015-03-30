@@ -25,6 +25,7 @@
 #include "initialize_interpreter.hpp"
 #include "global.hpp"
 #include "binary_file_tcl.hpp"
+#include "capacitor_tcl.hpp"
 #include "cells_tcl.hpp"
 #include "constraint_tcl.hpp"
 #include "domain_decomposition_tcl.hpp"
@@ -197,6 +198,7 @@ static void tcl_register_commands(Tcl_Interp* interp) {
   REGISTER_COMMAND("iccp3m", tclcommand_iccp3m);
 #endif
   REGISTER_COMMAND("efield_caps", tclcommand_print_efield_capacitors);
+  REGISTER_COMMAND("generate_potential_from_mesh", tclcommand_gen_pot_from_mesh);
 #endif
 #ifdef METADYNAMICS
   /* in metadynamics.cpp */

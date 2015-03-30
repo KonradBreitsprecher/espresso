@@ -418,6 +418,14 @@ inline int calc_factors(int n, int *factors, int max)
 /*************************************************************/
 /*@{*/
 
+/** Scales a vector */
+inline void vecscale(double v[3], double s)
+{
+  int i;
+  for(i=0;i<3;i++)
+    v[i] *= s;
+}
+
 /** Subtracts vector v2 from vector v1 and stores resuld in vector dv */
 inline void vecsub(double v1[3], double v2[3], double dv[3])
 {
@@ -492,6 +500,18 @@ inline void vec_rotate(double *axis, double alpha, double *vector, double *resul
 
   return;
 }
+
+/** Calculates perpendicular vector res[3] from line l:x[3]->v0[3]+x*v1[3] and point P[3] */
+inline void vecdist_line_point(double v0[3], double v1[3], double P[3], double res[3])
+{
+  int i;
+  double h[3];
+  vecsub(P,v0,h);
+  double x = scalar(v1,h)/sqrlen(v1);
+  for(i=0;i<3;i++)
+    res[i]=P[i]-(v0[i]+x*v1[i]);
+}
+
 
 /** Calc eigevalues of a 3x3 matrix stored in q as a 9x1 array*/
 inline int calc_eigenvalues_3x3(double *q,  double *eva) {
@@ -924,6 +944,21 @@ inline double unfolded_distance(double pos1[3], int image_box1[3],
   return sqrt(dist);
 }
 /*@}*/
+
+/*************************************************************/
+/** \name String helper functions                            */
+/*************************************************************/
+/*@{*/
+
+/** Check if file exists */
+inline bool file_exists (const char *fname) {
+  if (FILE *file = fopen(fname, "r")) {
+    fclose(file);
+    return true;
+  } else {
+    return false;
+  }   
+}
 
 /*************************************************************/
 /** \name String helper functions                            */

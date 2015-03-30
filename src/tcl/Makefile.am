@@ -31,6 +31,7 @@ libEspressoTcl_la_SOURCES = \
 	binary_file_tcl.cpp binary_file_tcl.hpp \
 	blockfile_tcl.cpp \
 	readpdb_tcl.cpp \
+	capacitor_tcl.cpp capacitor_tcl.hpp \
 	cells_tcl.cpp \
 	cells_tcl.hpp \
 	channels_tcl.cpp \
