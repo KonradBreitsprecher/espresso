@@ -30,19 +30,19 @@ inline std::string intToString(int i)
 }
 
 
-capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials)
+capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins )
 {
-	_box[0] = 10;
-	_box[1] = 10;
-	_box[2] = 20;
+	_box[0] = box_l[0];
+	_box[1] = box_l[1];
+	_box[2] = box_l[2];
 	
-	_offset[0] = -5;
-	_offset[1] = -5;
+	_offset[0] = 0;
+	_offset[1] = 0;
 	_offset[2] = 0;
 
-    _bins[0] = 50;
-    _bins[1] = 50;
-    _bins[2] = 50;
+    _bins[0] = bins[0];
+    _bins[1] = bins[1];
+    _bins[2] = bins[2];
 
 	_pref[0] = 1.0/6.0;
 	_pref[1] = 1.0/6.0;
@@ -105,25 +105,26 @@ double capacitor::getNeighbourSum(double* data, int* G)
     int GzP[3] = {G[0],G[1],translatedGrid(G,2,1)};
     int GzN[3] = {G[0],G[1],translatedGrid(G,2,-1)};
 
-    return _pref[0] * (data[gridToFlatArrayIndex(GxP)] + data[gridToFlatArrayIndex(GxN)]) +
-           _pref[1] * (data[gridToFlatArrayIndex(GyP)] + data[gridToFlatArrayIndex(GyN)]) +
-           _pref[2] * (data[gridToFlatArrayIndex(GzP)] + data[gridToFlatArrayIndex(GzN)]);
+    return _pref[0] * (data[gridToFlatArrayIndex(GxP)] + data[gridToFlatArrayIndex(GxN)] +
+					   data[gridToFlatArrayIndex(GyP)] + data[gridToFlatArrayIndex(GyN)] +
+					   data[gridToFlatArrayIndex(GzP)] + data[gridToFlatArrayIndex(GzN)]);
 
                     //double* a = new double[3] {1,1,1};
                     //double b[3] = {1,1,1};
 }
 
-void capacitor::create_potential_file()
+void capacitor::create_potential_file(std::string ext_pot_path)
 {
 
 	//Flat Potential Field
 	double *_T, *_Tnew;
 	bool *_TisBoundary;
     int num_gridpoints = _bins[0]*_bins[1]*_bins[2];
+	double spacing[3] = {_box[0]/_bins[0],_box[1]/_bins[1],_box[2]/_bins[2]};
 
-    _T =    new double[num_gridpoints];
-    _Tnew = new double[num_gridpoints];
-    _TisBoundary = new bool[num_gridpoints];
+    _T =    new double[num_gridpoints]();
+    _Tnew = new double[num_gridpoints]();
+    _TisBoundary = new bool[num_gridpoints]();
 
     std::cout << "Get surface, write distance volume data for each electrode" << std::endl;
     std::ofstream surfaceGridFile;
@@ -152,13 +153,19 @@ void capacitor::create_potential_file()
                     double dist = sqrt(_electrodes[i].sqrDistToMesh(P));
                     distVolumeGridFile << P[0] << " " << P[1] << " " << P[2] << " " << dist << "\n";
 
+                    //if (_electrodes[i].sqrDistToMesh(P) <= 0.25)
                     if (dist <= 0.5)
                     {
                         _T[cnt] = _electrodes[i].pot;
                         _Tnew[cnt] = _electrodes[i].pot;
+						//fprintf(stderr,"SURFACE %d %f\n",cnt,  _electrodes[i].pot);
                         _TisBoundary[cnt] = true;
-                        surfaceGridFile << P[0] << " " << P[1] << " " << P[2] << "\n";
-                    }
+                        surfaceGridFile << P[0] << " " << P[1] << " " << P[2] << " " << _electrodes[i].pot << "\n";
+                    }/* else {
+                        _TisBoundary[cnt] = false;
+                        _T[cnt] = 0;
+                        _Tnew[cnt] = 0;
+					}*/
                     cnt++;
                 }
             }
@@ -168,10 +175,12 @@ void capacitor::create_potential_file()
     surfaceGridFile.close();
 
     std::cout << std::endl << "7-Point Stencil Relaxation with boundary values" << std::endl;
-    int num_iterations = 2000;
+    int num_iterations = 50000;
+	double convergence = 1e-7;
+	double dMax;
     for (int i = 0; i < num_iterations; i++)
     {
-        double dMax = 0;
+        dMax = 0;
         //std::cout << _T[worldToFlatArrayIndex(new double[3] { 2,2,10})] << std::endl;
         int cnt = 0;
         for (int x = 0; x < _bins[0]; x++)
@@ -187,6 +196,8 @@ void capacitor::create_potential_file()
                     if (!_TisBoundary[cnt])
                     {
                         _Tnew[cnt] = getNeighbourSum(_T, G);
+						//if (_Tnew[cnt]<0)
+						//	fprintf(stderr,"NEIGHBOUR SUM %f\n",  _Tnew[cnt]);
                     }
 
                     cnt++;
@@ -224,17 +235,26 @@ void capacitor::create_potential_file()
         }
 
 
-        if (dMax < 1e-10)
+        if (dMax < convergence)
         {
             std::cout << "Convergence after " << i << " Iterations" << std::endl;
             break;
         }
 
     }
+	
+	if (dMax > convergence)
+	{
+		std::cout << "Reached maximum number of iterations" << std::endl;
+	}
 
     std::cout << std::endl << "Save potential mesh to file" << std::endl;
     std::ofstream potVolumeGridFile;
-    potVolumeGridFile.open ("./potVolumeGrid.txt");
+    std::ofstream potVolumeGridFileWCoords;
+    potVolumeGridFile.open(ext_pot_path.c_str());
+    potVolumeGridFileWCoords.open((ext_pot_path + std::string("_coords")).c_str());
+    //potVolumeGridFile << std::setprecision(16) << "1 " << _box[0] << " " << _box[1] << " " << _box[2] << " " << spacing[0] << " " << spacing[1] << " " << spacing[2] << " 0 0 0\n";
+    potVolumeGridFile << std::setprecision(16) << "1 " << _box[0] << " " << _box[1] << " " << _box[2] << " " << _bins[0] << " " << _bins[1] << " " << _bins[2] << " 0 0 0\n";
     int cnt = 0;
     for (int x = 0; x < _bins[0]; x++)
     {
@@ -246,21 +266,23 @@ void capacitor::create_potential_file()
                 double P[3] = {0,0,0};
                 gridToWorld(P, G);
 
-                potVolumeGridFile << P[0] << " " << P[1] << " " << P[2] << " " << _T[cnt] << "\n";
+                potVolumeGridFileWCoords << P[0] << " " << P[1] << " " << P[2] << " " << _T[cnt] << "\n";
+                potVolumeGridFile << _T[cnt] << "\n";
                 cnt++;
             }
         }
     }
     potVolumeGridFile.close();
+    potVolumeGridFileWCoords.close();
 	delete[] _T;
 	delete[] _Tnew;
 	delete[] _TisBoundary; 
 }
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials) 
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, std::string ext_pot_path) 
 {
-	capacitor cap(geofiles, potentials);
-	cap.create_potential_file();
+	capacitor cap(geofiles, potentials, bins);
+	cap.create_potential_file(ext_pot_path);
 
 	return 0;
 }

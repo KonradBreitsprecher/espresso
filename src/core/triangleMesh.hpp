@@ -37,6 +37,7 @@ typedef struct
         double edgeStart2D[9][2];
         double helperGradients[9][2];
         double area;
+        double clockwise;
 } triangle;
 
 class triangleMesh

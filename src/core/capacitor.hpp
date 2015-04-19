@@ -2,14 +2,13 @@
 #define CAPACITOR_H
 
 #include "triangleMesh.hpp"
-
+#include "grid.hpp"
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <stdlib.h>
-
 #include <fstream>
 #include <sstream>
-
 #include <math.h>
 
 class electrode : public triangleMesh
@@ -26,8 +25,8 @@ class capacitor
 {
     public:
 		capacitor();
-        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials);
-		void create_potential_file(); 
+        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins);
+		void create_potential_file(std::string ext_pot_path); 
     protected:
     private:
 		void worldToGrid(double worldPoint[3],int gridPoint[3]);
@@ -41,6 +40,6 @@ class capacitor
 		int _bins[3];
 };
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials);
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, std::string ext_pot_path);
 
 #endif // CAPACITOR_H

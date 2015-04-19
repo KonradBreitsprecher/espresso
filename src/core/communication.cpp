@@ -2958,7 +2958,7 @@ void mpi_external_potential_broadcast_slave(int node, int number) {
   ExternalPotential* new_;
   generate_external_potential(&new_);
   external_potentials[number] = E;
-  external_potentials[number].scale=(double*) malloc(external_potentials[number].n_particle_types);
+  external_potentials[number].scale=(double*) malloc(external_potentials[number].n_particle_types*sizeof(double));
   MPI_Bcast(external_potentials[number].scale, external_potentials[number].n_particle_types, MPI_DOUBLE, 0, comm_cart);
 }
 

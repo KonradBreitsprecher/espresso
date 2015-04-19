@@ -252,8 +252,10 @@ int tclcommand_integrate(ClientData data, Tcl_Interp *interp, int argc, char **a
       return gather_runtime_errors(interp, TCL_OK);
   } else  {
     for (int i=0; i<n_steps; i++) {
-      if (mpi_integrate(1, reuse_forces))
-        return gather_runtime_errors(interp, TCL_OK);
+      if (mpi_integrate(1, reuse_forces)) {
+		//fprintf(stderr,"integrate_tcl.cpp runtime_error");
+        return gather_runtime_errors(interp, TCL_ERROR);
+	  }
       reuse_forces=1;
       autoupdate_observables();
       autoupdate_correlations();

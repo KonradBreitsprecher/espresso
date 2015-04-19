@@ -204,19 +204,21 @@ int tclcommand_iccp3m_parse_normals(Tcl_Interp *interp,int n_ic, char *string) {
   for (int i = 0; i<n_ic; i++) {
     beginVector = arg.find_first_of(opening_bracket);
     endVector = arg.find_first_of(closing_bracket);
-    sVector = arg.substr(beginVector+1, endVector-2);
-    sVector.append(" "); // I could not figure out why -2 and append " " but it works!
+    sVector = arg.substr(beginVector+1, endVector);
+	//fprintf(stderr, "beginVector %d  endVector %d\n substr0-endVector: %s",beginVector,endVector,arg.substr(0,endVector).c_str());
+    //sVector.append(" "); // I could not figure out why -2 and append " " but it works!
     ssVector.str(sVector);
     ssVector >> x;
     ssVector >> y;
     ssVector >> z;
-    if (!ssVector.good()) {
+    if (ssVector.fail()) {
       Tcl_AppendResult(interp, "Could not understand ", ssVector.str().c_str(), (char *)NULL); 
       return TCL_ERROR;
     }
     iccp3m_cfg.nvectorx[i] = x;
     iccp3m_cfg.nvectory[i] = y;
     iccp3m_cfg.nvectorz[i] = z;
+	//fprintf(stderr,"icctcl normal x y z: %f %f %f\n",x,y,z);
     arg.erase(0, endVector+1);
   }
 

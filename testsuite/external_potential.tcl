@@ -21,7 +21,7 @@ puts "---------------------------------------------------------------"
 puts "- Testcase external_potential.tcl running on [format %02d [setmd n_nodes]] nodes"
 puts "---------------------------------------------------------------"
 
-require_max_nodes_per_side 1
+#require_max_nodes_per_side 1
 
 setmd box_l 6. 6. 6.
 thermostat off

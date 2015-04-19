@@ -51,6 +51,7 @@ libEspresso_la_SOURCES = \
 	galilei.cpp galilei.hpp \
 	ghosts.cpp ghosts.hpp \
 	global.cpp global.hpp \
+	global_lattice.cpp global_lattice.hpp \
 	grid.cpp grid.hpp \
 	halo.cpp halo.hpp \
 	iccp3m.cpp iccp3m.hpp \

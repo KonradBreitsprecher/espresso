@@ -351,8 +351,10 @@ void integrate_vv(int n_steps, int reuse_forces)
     integrate_reaction();
 #endif
 
-    if (check_runtime_errors())
+    if (check_runtime_errors()) {
+	  fprintf(stderr, "integratecpp runtime_errors");
       break;
+	}
 
     /* Integration Step: Step 4 of Velocity Verlet scheme:
        v(t+dt) = v(t+0.5*dt) + 0.5*dt * f(t+dt) */

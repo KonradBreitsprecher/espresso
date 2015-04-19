@@ -19,7 +19,7 @@
 #ifndef _EXTERNAL_POTENTIAL_HPP
 #define _EXTERNAL_POTENTIAL_HPP
 
-#include "lattice.hpp"
+#include "global_lattice.hpp"
 
 #define MAX_FILENAME_SIZE 256
 
@@ -30,7 +30,7 @@ void external_potential_pre_init();
 
 typedef struct {
   char filename[MAX_FILENAME_SIZE];
-  Lattice potential;
+  GlobalLattice potential;
 } ExternalPotentialTabulated;
 
 typedef struct {
@@ -57,8 +57,6 @@ int external_potential_tabulated_read_potential_file(int number);
 
 void add_external_potential_forces(Particle* p);
 void add_external_potential_energy(Particle* p);
-
-int write_local_lattice_to_file(const char* filename_prefix, Lattice* lattice); 
 
 
 #endif

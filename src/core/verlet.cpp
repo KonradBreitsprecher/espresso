@@ -180,7 +180,7 @@ void calculate_verlet_ia()
 #ifdef CONSTRAINTS
       add_constraints_forces(&p1[i]);
 #endif
-      add_external_potential_forces(&p1[i]);
+	  add_external_potential_forces(&p1[i]);
     }
 
     /* Loop cell neighbors */

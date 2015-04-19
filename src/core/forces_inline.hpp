@@ -236,7 +236,6 @@ inline void force_calc()
     iccp3m_iteration();
 #endif
   init_forces();
-
   calc_long_range_forces();
 
   switch (cell_structure.type) {

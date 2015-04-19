@@ -20,6 +20,7 @@
 #include "triangleMesh.hpp"
 #define COPYARRAY(dest, src) memcpy((dest), (src), sizeof((src)))
 
+const std::string featureStr[7] = {"A","B","C","E1","E2","E3","F"};
 double stringToDouble(std::string str)
 {
 	std::stringstream ss;
@@ -32,6 +33,7 @@ double stringToDouble(std::string str)
 triangleMesh::triangleMesh(std::string pathToMeshfile)
 {
 	_numFaces = getNumFaces(pathToMeshfile);
+	fprintf(stderr, "FOUND %d FACES",_numFaces);
 	_triangles = new triangle[_numFaces];
 	std::ifstream inFile(pathToMeshfile.c_str());
 	std::string line;
@@ -108,6 +110,23 @@ triangleMesh::triangleMesh(std::string pathToMeshfile)
 				_triangles[faceCnt].helperGradients[8][0] =  _triangles[faceCnt].helperGradients[2][1];
 				_triangles[faceCnt].helperGradients[8][1] = -_triangles[faceCnt].helperGradients[2][0];
 				vertexCnt = 0;
+				
+				double edgeSum = (_triangles[faceCnt].transformedVertices[1][0]-_triangles[faceCnt].transformedVertices[0][0]) *
+						         (_triangles[faceCnt].transformedVertices[1][1]+_triangles[faceCnt].transformedVertices[0][1]) +
+			                     (_triangles[faceCnt].transformedVertices[2][0]-_triangles[faceCnt].transformedVertices[1][0]) *  
+                                 (_triangles[faceCnt].transformedVertices[2][1]+_triangles[faceCnt].transformedVertices[1][1]) +
+								 (_triangles[faceCnt].transformedVertices[0][0]-_triangles[faceCnt].transformedVertices[2][0]) *  
+                                 (_triangles[faceCnt].transformedVertices[0][1]+_triangles[faceCnt].transformedVertices[2][1]); 
+
+				if (edgeSum > 0) {
+					//fprintf(stderr,"CLOCKWISE\n");
+					_triangles[faceCnt].clockwise = -1;
+				}
+				else {
+					//fprintf(stderr,"COUNTER CLOCKWISE\n");
+					_triangles[faceCnt].clockwise = 1;
+				}
+
 				faceCnt++;
 			}
 		}
@@ -158,7 +177,8 @@ void triangleMesh::transformPoint2D(int i, double P[3], double pt2D[2])
 
 double triangleMesh::edgeEquation(int i, int j, double p[2])
 {
-	return -(p[0] - _triangles[i].edgeStart2D[j][0]) * _triangles[i].helperGradients[j][1] + (p[1] - _triangles[i].edgeStart2D[j][1]) * _triangles[i].helperGradients[j][0];
+	return _triangles[i].clockwise * ((p[0] - _triangles[i].edgeStart2D[j][0]) * _triangles[i].helperGradients[j][1] -
+							          (p[1] - _triangles[i].edgeStart2D[j][1]) * _triangles[i].helperGradients[j][0]);
 }
 
 double triangleMesh::sqrDistToEdge(double A[3],double a[3], double P[3]) 
@@ -174,16 +194,24 @@ double triangleMesh::sqrDistToTriangle(int i, double P[3], int *minDistFeature)
 	//Use 2D representation of triangle and test point to determine feature (A,B,C,E1,E2,E3,F), use 3D coords to calculate distance vector
 	double pt[3];
 	transformPoint(i, P, pt);
-	double px = pt[0];
-	double pxs = px * px;
 	double p[2];
 	p[0] = pt[2];
 	p[1] = pt[1];
-	
+	/*
+	fprintf(stderr,"plot '-' w p ps 5 pt 2,'-' w p ps 5 pt 2,'-' w p ps 5 pt 2,'-' w p ps 5 pt 3\n%.2f %.2f\ne\n%.2f %.2f\ne\n%.2f %.2f\ne\n%.2f %.2f\ne\n",_triangles[i].edgeStart2D[0][0] ,_triangles[i].edgeStart2D[0][1],_triangles[i].edgeStart2D[1][0],_triangles[i].edgeStart2D[1][1],_triangles[i].edgeStart2D[2][0],_triangles[i].edgeStart2D[2][1], p[0],p[1]);
+    for (int j = 0; j<9; j++) {	
+		fprintf(stderr,"EDGE EQ %d:  %2.2f\n",j,edgeEquation(i, j, p));
+	}
+    for (int j = 0; j<6; j++) {	
+		fprintf(stderr,"F%s %2.2f\n",featureStr[j].c_str(), sqrt(sqrDistToFeatureOfFaceIndex(P,i,j)));
+	}
+	fprintf(stderr,"F6 %2.2f\n",abs(pt[0]));
+	*/
 	if (edgeEquation(i, 0, p) <= 0 && edgeEquation(i, 1, p) <= 0 && edgeEquation(i, 2, p) <= 0)
 	{
+		//fprintf(stderr,"FEATURE F\n");
 		*minDistFeature = 6;
-		return pxs;
+		return pt[0]*pt[0];
 	}
 	else if (edgeEquation(i, 3, p) >= 0 && edgeEquation(i, 8, p) <= 0)
 	{
@@ -210,6 +238,7 @@ double triangleMesh::sqrDistToTriangle(int i, double P[3], int *minDistFeature)
 		*minDistFeature = 5;
 	}
 
+	//fprintf(stderr,"FEATURE %s\n",featureStr[*minDistFeature].c_str());
 	return sqrDistToFeatureOfFaceIndex(P,i,*minDistFeature);
 }
 
@@ -230,7 +259,6 @@ double triangleMesh::sqrDistToFeatureOfFaceIndex(double P[3], int faceIndex, int
 	//}
 }
 
-const std::string featureStr[7] = {"A","B","C","E1","E2","E3","F"};
 
 void triangleMesh::minVectorToMesh(double P[3], double res[3])
 {
@@ -275,14 +303,17 @@ void triangleMesh::vecToFeatureOfFaceIndex(double P[3], int faceIndex, int featu
 
 double triangleMesh::sqrDistToMesh(double P[3])
 {
-	int feature;
+	int feature,minDistFeature;
 	double minDist = 1e10;
 	for (int i = 0; i < _numFaces; i++)
 	{
 		double distSqr = sqrDistToTriangle(i, P, &feature);
-		if (minDist > distSqr)
+		if (minDist > distSqr) {
+			minDistFeature = feature;
 			minDist = distSqr;
+		}
 	}
+
 	return minDist;
 }
 

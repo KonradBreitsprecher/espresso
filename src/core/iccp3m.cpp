@@ -143,103 +143,108 @@ int bcast_iccp3m_cfg(void){
 }
 
 int iccp3m_iteration() {
-   double fdot,hold,hnew,hmax,del_eps,diff=0.0,difftemp=0.0, ex, ey, ez, l_b;
-   Cell *cell;
-   int c,np;
-   Particle *part;
-   int i, j,id;
-   double globalmax;
-   double f1, f2 = 0;
+	double fdot,hold,hnew,hmax,del_eps,diff=0.0,difftemp=0.0, ex, ey, ez, pref;
+	Cell *cell;
+	int c,np;
+	Particle *part;
+	int i, j,id;
+	double globalmax;
+	double f1, f2 = 0;
 
-   iccp3m_sanity_check();
-   
-   l_b = coulomb.bjerrum;
-   if((iccp3m_cfg.eout <= 0)) {
-       ostringstream msg;
-       msg <<"ICCP3M: nonpositive dielectric constant is not allowed. Put a decent tcl error here\n";
-       runtimeError(msg);
-   }
-   
-   
-   iccp3m_cfg.citeration=0;
-   for(j=0;j<iccp3m_cfg.num_iteration;j++) {
-     hmax=0.;
-     force_calc_iccp3m(); /* Calculate electrostatic forces (SR+LR) excluding source source interaction*/
-     diff=0;
-     for(c = 0; c < local_cells.n; c++) {
-       cell = local_cells.cell[c];
-       part = cell->part;
-       np   = cell->n;
-       for(i=0 ; i < np; i++) {
-         if( part[i].p.identity < iccp3m_cfg.n_ic+iccp3m_cfg.first_id && part[i].p.identity >= iccp3m_cfg.first_id ) {
-           id = part[i].p.identity - iccp3m_cfg.first_id;
-           /* the dielectric-related prefactor: */                     
-           del_eps = (iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.ein[id] + iccp3m_cfg.eout)/6.283185307;
-           /* calculate the electric field at the certain position */
-           ex=part[i].f.f[0]/part[i].p.q;
-           ey=part[i].f.f[1]/part[i].p.q;
-           ez=part[i].f.f[2]/part[i].p.q;
-           
-           /* let's add the contribution coming from the external field */
-           ex += iccp3m_cfg.extx; 
-           ey += iccp3m_cfg.exty; 
-           ez += iccp3m_cfg.extz;
-           
-           if (ex == 0 && ey == 0 && ez == 0) {
-             ostringstream msg;
-             msg <<"ICCP3M found zero electric field on a charge. This must never happen";
-             runtimeError(msg);
-           }
-           /* the dot product   */
-           fdot = ex*iccp3m_cfg.nvectorx[id]+
-             ey*iccp3m_cfg.nvectory[id]+
-             ez*iccp3m_cfg.nvectorz[id];
-           
-           /* recalculate the old charge density */
-                      hold=part[i].p.q/iccp3m_cfg.areas[id];
-          /* determine if it is higher than the previously highest charge density */            
-                      if(fabs(hold)>hmax)hmax=fabs(hold); 
-                      f1 =  (+del_eps*fdot/l_b);
-//                      double f2 = (1- 0.5*(iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] ))*(iccp3m_cfg.sigma[id]);
-                      if (iccp3m_cfg.sigma!=0) {
-                        f2 = (2*iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] )*(iccp3m_cfg.sigma[id]);
-                      } 
+	iccp3m_sanity_check();
 
-                      hnew=(1.-iccp3m_cfg.relax)*hold + (iccp3m_cfg.relax)*(f1 + f2);
-                      difftemp=fabs( 1*(hnew - hold)/(hmax + fabs(hnew+hold)) ); /* relative variation: never use 
-                                                                              an estimator which can be negative
-                                                                              here */
-                      if(difftemp > diff && part[i].p.q > 1e-5)
-                      {
-//                          if (fabs(difftemp - 1./(1./iccp3m_cfg.relax - 1.)) > 1e-10) 
-                        diff=difftemp;  /* Take the largest error to check for convergence */
-                      }
-                      part[i].p.q = hnew * iccp3m_cfg.areas[id];
-         /* check if the charge now is more than 1e6, to determine if ICC still leads to reasonable results */
-         /* this is kind a arbitrary measure but, does a good job spotting divergence !*/
-                      if(fabs(part[i].p.q) > 1e6) {
-                          ostringstream msg;
-                          msg <<"too big charge assignment in iccp3m! q >1e6 , assigned charge= " << part[i].p.q << "\n";
-                          runtimeError(msg);
-                        diff = 1e90; /* A very high value is used as error code */
-                        break;
-                      }
-                 }
-             }  /* cell particles */
-           // printf("cell %d w %d particles over (node %d)\n",c,np,this_node); fflush(stdout);
-       } /* local cells */
-       iccp3m_cfg.citeration++;
-       MPI_Allreduce(&diff, &globalmax, 1,MPI_DOUBLE, MPI_MAX, comm_cart);
+	if((iccp3m_cfg.eout <= 0)) {
+		ostringstream msg;
+		msg <<"ICCP3M: nonpositive dielectric constant is not allowed. Put a decent tcl error here\n";
+		runtimeError(msg);
+	}
 
-       if (globalmax < iccp3m_cfg.convergence) 
-         break; 
-       if ( diff > 1e89 ) /* Error happened */
-         return iccp3m_cfg.citeration++;
+    pref = 1.0/(coulomb.prefactor*6.283185307);
+	iccp3m_cfg.citeration=0;
+	for(j=0;j<iccp3m_cfg.num_iteration;j++) {
+		hmax=0.;
+		force_calc_iccp3m(); /* Calculate electrostatic forces (SR+LR) excluding source source interaction*/
+		diff=0;
+		for(c = 0; c < local_cells.n; c++) {
+			cell = local_cells.cell[c];
+			part = cell->part;
+			np   = cell->n;
+			for(i=0 ; i < np; i++) {
+				if( part[i].p.identity < iccp3m_cfg.n_ic+iccp3m_cfg.first_id && part[i].p.identity >= iccp3m_cfg.first_id ) {
+					id = part[i].p.identity - iccp3m_cfg.first_id;
+					/* the dielectric-related prefactor: */                     
+					del_eps = (iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.ein[id] + iccp3m_cfg.eout);
+					/* calculate the electric field at the certain position */
+					ex=part[i].f.f[0]/part[i].p.q;
+					ey=part[i].f.f[1]/part[i].p.q;
+					ez=part[i].f.f[2]/part[i].p.q;
 
-  } /* iteration */
-  on_particle_change();
+					/* let's add the contribution coming from the external field */
+					ex += iccp3m_cfg.extx; 
+					ey += iccp3m_cfg.exty; 
+					ez += iccp3m_cfg.extz;
 
-  return iccp3m_cfg.citeration;
+					if (ex == 0 && ey == 0 && ez == 0) {
+						ostringstream msg;
+						msg <<"ICCP3M found zero electric field on a charge. This must never happen";
+						runtimeError(msg);
+					}
+					/* the dot product   */
+					fdot = ex*iccp3m_cfg.nvectorx[id]+
+						ey*iccp3m_cfg.nvectory[id]+
+						ez*iccp3m_cfg.nvectorz[id];
+					//fprintf(stderr,"area: %f  normal x y z: %f %f %f\n",iccp3m_cfg.areas[id], iccp3m_cfg.nvectorx[id],iccp3m_cfg.nvectory[id],iccp3m_cfg.nvectorz[id]);
+
+					/* recalculate the old charge density */
+					hold=part[i].p.q/iccp3m_cfg.areas[id];
+					/* determine if it is higher than the previously highest charge density */            
+					if(fabs(hold)>hmax)
+						hmax=fabs(hold); 
+					
+					f1 =  (+del_eps*fdot*pref);
+					//                      double f2 = (1- 0.5*(iccp3m_cfg.ein[id]-iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] ))*(iccp3m_cfg.sigma[id]);
+					if (iccp3m_cfg.sigma!=0) {
+						f2 = (2*iccp3m_cfg.eout)/(iccp3m_cfg.eout + iccp3m_cfg.ein[id] )*(iccp3m_cfg.sigma[id]);
+					} 
+
+					hnew=(1.-iccp3m_cfg.relax)*hold + (iccp3m_cfg.relax)*(f1 + f2);
+					difftemp=fabs( 1*(hnew - hold)/(hmax + fabs(hnew+hold)) ); /* relative variation: never use 
+																				  an estimator which can be negative
+																				  here */
+					if(difftemp > diff && part[i].p.q > 1e-5)
+					{
+						//                          if (fabs(difftemp - 1./(1./iccp3m_cfg.relax - 1.)) > 1e-10) 
+						diff=difftemp;  /* Take the largest error to check for convergence */
+					}
+					part[i].p.q = hnew * iccp3m_cfg.areas[id];
+					//fprintf(stderr, "pid %d  iccid %d  q %f\n",i,id,part[i].p.q);
+					/* check if the charge now is more than 1e6, to determine if ICC still leads to reasonable results */
+					/* this is kind a arbitrary measure but, does a good job spotting divergence !*/
+					if(fabs(part[i].p.q) > 1e6) {
+						ostringstream msg;
+						msg <<"too big charge assignment in iccp3m! q >1e6 , assigned charge= " << part[i].p.q << "\n";
+						runtimeError(msg);
+						diff = 1e90; /* A very high value is used as error code */
+						break;
+					}
+				}
+			}  /* cell particles */
+			// printf("cell %d w %d particles over (node %d)\n",c,np,this_node); fflush(stdout);
+		} /* local cells */
+		iccp3m_cfg.citeration++;
+		MPI_Allreduce(&diff, &globalmax, 1,MPI_DOUBLE, MPI_MAX, comm_cart);
+
+		if (globalmax < iccp3m_cfg.convergence) 
+			break; 
+		if ( diff > 1e89 ) /* Error happened */
+			return iccp3m_cfg.citeration++;
+
+	} /* iteration */
+	on_particle_change();
+	
+	//fprintf(stderr, "ICC finished %d\n",iccp3m_cfg.citeration);
+
+	return iccp3m_cfg.citeration;
 }
 
 void force_calc_iccp3m() {
