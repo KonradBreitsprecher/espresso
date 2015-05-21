@@ -30,7 +30,7 @@ inline std::string intToString(int i)
 }
 
 
-capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins )
+capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec,int num_iter, double convergence)
 {
 	_box[0] = box_l[0];
 	_box[1] = box_l[1];
@@ -43,6 +43,10 @@ capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> pote
     _bins[0] = bins[0];
     _bins[1] = bins[1];
     _bins[2] = bins[2];
+
+	_surface_prec = surface_prec;
+	_num_iter = num_iter;
+	_convergence = convergence;
 
 	_pref[0] = 1.0/6.0;
 	_pref[1] = 1.0/6.0;
@@ -154,7 +158,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
                     distVolumeGridFile << P[0] << " " << P[1] << " " << P[2] << " " << dist << "\n";
 
                     //if (_electrodes[i].sqrDistToMesh(P) <= 0.25)
-                    if (dist <= 0.5)
+                    if (dist <= _surface_prec)
                     {
                         _T[cnt] = _electrodes[i].pot;
                         _Tnew[cnt] = _electrodes[i].pot;
@@ -175,10 +179,8 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     surfaceGridFile.close();
 
     std::cout << std::endl << "7-Point Stencil Relaxation with boundary values" << std::endl;
-    int num_iterations = 50000;
-	double convergence = 1e-7;
 	double dMax;
-    for (int i = 0; i < num_iterations; i++)
+    for (int i = 0; i < _num_iter; i++)
     {
         dMax = 0;
         //std::cout << _T[worldToFlatArrayIndex(new double[3] { 2,2,10})] << std::endl;
@@ -235,7 +237,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
         }
 
 
-        if (dMax < convergence)
+        if (dMax < _convergence)
         {
             std::cout << "Convergence after " << i << " Iterations" << std::endl;
             break;
@@ -243,7 +245,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 
     }
 	
-	if (dMax > convergence)
+	if (dMax > _convergence)
 	{
 		std::cout << "Reached maximum number of iterations" << std::endl;
 	}
@@ -279,9 +281,9 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 	delete[] _TisBoundary; 
 }
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, std::string ext_pot_path) 
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence, std::string ext_pot_path) 
 {
-	capacitor cap(geofiles, potentials, bins);
+	capacitor cap(geofiles, potentials, bins, surface_prec, num_iter, convergence);
 	cap.create_potential_file(ext_pot_path);
 
 	return 0;

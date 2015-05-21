@@ -25,7 +25,7 @@ class capacitor
 {
     public:
 		capacitor();
-        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins);
+        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence);
 		void create_potential_file(std::string ext_pot_path); 
     protected:
     private:
@@ -36,10 +36,10 @@ class capacitor
 		double getNeighbourSum(double* data, int* G);
 		
 		std::vector<electrode> _electrodes;
-		double _box[3], _offset[3], _pref[3];
-		int _bins[3];
+		double _box[3], _offset[3], _pref[3],_surface_prec,_convergence;
+		int _bins[3],_num_iter;
 };
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, std::string ext_pot_path);
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins,double surface_prec, int num_iter, double convergence, std::string ext_pot_path);
 
 #endif // CAPACITOR_H
