@@ -120,7 +120,6 @@ double capacitor::getNeighbourSum(double* data, int* G)
 void capacitor::create_potential_file(std::string ext_pot_path)
 {
 
-	//Flat Potential Field
 	double *_T, *_Tnew;
 	bool *_TisBoundary;
     int num_gridpoints = _bins[0]*_bins[1]*_bins[2];
@@ -130,7 +129,8 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     _Tnew = new double[num_gridpoints]();
     _TisBoundary = new bool[num_gridpoints]();
 
-    std::cout << "Get surface, write distance volume data for each electrode" << std::endl;
+	//Calc surface points and volume distance grid
+	std::cout << "Get surface, write distance volume data for each electrode" << std::endl;
     std::ofstream surfaceGridFile;
     std::string fname = "./surfaceGrid.txt";
     surfaceGridFile.open(fname.c_str());
@@ -178,6 +178,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     }
     surfaceGridFile.close();
 
+	//Calc volume potential
     std::cout << std::endl << "7-Point Stencil Relaxation with boundary values" << std::endl;
 	double dMax;
     for (int i = 0; i < _num_iter; i++)
@@ -250,6 +251,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 		std::cout << "Reached maximum number of iterations" << std::endl;
 	}
 
+	//Save converged volume potential
     std::cout << std::endl << "Save potential mesh to file" << std::endl;
     std::ofstream potVolumeGridFile;
     std::ofstream potVolumeGridFileWCoords;
@@ -264,18 +266,21 @@ void capacitor::create_potential_file(std::string ext_pot_path)
         {
             for (int z = 0; z < _bins[2]; z++)
             {
+				//Potential
                 int G[3] =  {x,y,z};
                 double P[3] = {0,0,0};
                 gridToWorld(P, G);
 
                 potVolumeGridFileWCoords << P[0] << " " << P[1] << " " << P[2] << " " << _T[cnt] << "\n";
                 potVolumeGridFile << _T[cnt] << "\n";
+
                 cnt++;
             }
         }
     }
     potVolumeGridFile.close();
     potVolumeGridFileWCoords.close();
+
 	delete[] _T;
 	delete[] _Tnew;
 	delete[] _TisBoundary; 
