@@ -51,7 +51,7 @@ proc meshToParticles {path_to_mesh first_index ptype} {
 
 
 
-proc mesh_capacitor_icc {firstIndex list_pathToMesh list_potentials list_types bins surface_prec num_iter convergence ext_pot_path} { 
+proc mesh_capacitor_icc {firstIndex list_pathToMesh list_potentials list_types bins surface_prec num_iter convergence epsilon_0 ext_pot_path} { 
 	global mesh_normals mesh_areas
 	global icc_areas icc_normals icc_epsilons icc_sigmas
 
@@ -83,7 +83,7 @@ proc mesh_capacitor_icc {firstIndex list_pathToMesh list_potentials list_types b
 	if {[file exists $ext_pot_path]} {
 		puts "Found $ext_pot_path, skipping potential calculations"
 	} else {
-		puts [generate_potential_from_mesh [llength $list_pathToMesh] $list_pathToMesh $list_potentials $bins $surface_prec $num_iter $convergence $ext_pot_path]
+		puts [generate_potential_from_mesh [llength $list_pathToMesh] $list_pathToMesh $list_potentials $bins $surface_prec $num_iter $convergence $epsilon_0 $ext_pot_path]
 	    puts "Created $ext_pot_path" 
 	}
 	puts "Setup ICC lists, assigned small random charge +/- \[0.001:0.002\] to particles $firstIndex to [expr $i-1]\n"

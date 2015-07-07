@@ -30,16 +30,12 @@ inline std::string intToString(int i)
 }
 
 
-capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec,int num_iter, double convergence)
+capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec,int num_iter, double convergence, double eps_0)
 {
 	_box[0] = box_l[0];
 	_box[1] = box_l[1];
 	_box[2] = box_l[2];
 	
-	_offset[0] = 0;
-	_offset[1] = 0;
-	_offset[2] = 0;
-
     _bins[0] = bins[0];
     _bins[1] = bins[1];
     _bins[2] = bins[2];
@@ -47,6 +43,7 @@ capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> pote
 	_surface_prec = surface_prec;
 	_num_iter = num_iter;
 	_convergence = convergence;
+	_eps_0 = eps_0;
 
 	_pref[0] = 1.0/6.0;
 	_pref[1] = 1.0/6.0;
@@ -76,17 +73,16 @@ capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> pote
 
 void capacitor::worldToGrid(double worldPoint[3],int gridPoint[3])
 {
-     gridPoint[0] = (int)dround(((worldPoint[0] - _offset[0]) / _box[0]) * _bins[0]);
-     gridPoint[1] = (int)dround(((worldPoint[1] - _offset[1]) / _box[1]) * _bins[1]);
-     gridPoint[2] = (int)dround(((worldPoint[2] - _offset[2]) / _box[2]) * _bins[2]);
+     gridPoint[0] = (int)(dround(((worldPoint[0]) / _box[0]) * _bins[0])) % _bins[0];
+     gridPoint[1] = (int)(dround(((worldPoint[1]) / _box[1]) * _bins[1])) % _bins[1];
+     gridPoint[2] = (int)(dround(((worldPoint[2]) / _box[2]) * _bins[2])) % _bins[2];
 }
-
 
 void capacitor::gridToWorld(double worldPoint[3], int gridPoint[3])
 {
-    worldPoint[0] = gridPoint[0] * _box[0] / _bins[0] + _offset[0];
-    worldPoint[1] = gridPoint[1] * _box[1] / _bins[1] + _offset[1];
-    worldPoint[2] = gridPoint[2] * _box[2] / _bins[2] + _offset[2];
+    worldPoint[0] = gridPoint[0] * _box[0] / _bins[0];
+    worldPoint[1] = gridPoint[1] * _box[1] / _bins[1];
+    worldPoint[2] = gridPoint[2] * _box[2] / _bins[2];
 }
 
 int capacitor::gridToFlatArrayIndex(int* gridPoint)
@@ -117,6 +113,66 @@ double capacitor::getNeighbourSum(double* data, int* G)
                     //double b[3] = {1,1,1};
 }
 
+double capacitor::interpolatePotOnWorldPoint(double* data, double wP[3])
+{
+	//The lower grid point without periodic BCs
+	int lGg[3] = { (int)(wP[0] / _box[0] * _bins[0]),
+		     	   (int)(wP[1] / _box[1] * _bins[1]),
+				   (int)(wP[2] / _box[2] * _bins[2])};
+
+	//The lower grid point with periodic BCS
+	int lG[3] = { lGg[0] % _bins[0],
+			      lGg[1] % _bins[1],
+				  lGg[2] % _bins[2]};
+    
+	//The higher grid points with periodic BCs
+	int Gx[3] = {translatedGrid(lG,0,1),lG[1],lG[2]};
+    int Gy[3] = {lG[0],translatedGrid(lG,1,1),lG[2]};
+    int Gz[3] = {lG[0],lG[1],translatedGrid(lG,2,1)};
+    int Gxy[3] = {translatedGrid(lG,0,1),translatedGrid(lG,1,1),lG[2]};
+    int Gxz[3] = {translatedGrid(lG,0,1),lG[1],translatedGrid(lG,2,1)};
+    int Gyz[3] = {lG[0],translatedGrid(lG,1,1),translatedGrid(lG,2,1)};
+    int Gxyz[3] = {translatedGrid(lG,0,1),translatedGrid(lG,1,1),translatedGrid(lG,2,1)};
+	
+	//Potentials at the grid points
+	double pots[8] = {data[gridToFlatArrayIndex(lG)],
+			   		  data[gridToFlatArrayIndex(Gx)],
+			   		  data[gridToFlatArrayIndex(Gy)],
+			   		  data[gridToFlatArrayIndex(Gz)],
+			   		  data[gridToFlatArrayIndex(Gxy)],
+			   		  data[gridToFlatArrayIndex(Gxz)],
+			   		  data[gridToFlatArrayIndex(Gyz)],
+			   		  data[gridToFlatArrayIndex(Gxyz)]};
+	
+	//The grid points without periodic BCs
+	int G[8][3] = {{lGg[0],  lGg[1],  lGg[2]  },
+				   {lGg[0]+1,lGg[1],  lGg[2]  },
+				   {lGg[0],  lGg[1]+1,lGg[2]  },
+				   {lGg[0],  lGg[1],  lGg[2]+1},
+				   {lGg[0]+1,lGg[1]+1,lGg[2]  },
+				   {lGg[0]+1,lGg[1],  lGg[2]+1},
+				   {lGg[0],  lGg[1]+1,lGg[2]+1},
+				   {lGg[0]+1,lGg[1]+1,lGg[2]+1}};
+
+	//The world points without periodic BCs
+	double W[8][3];
+	//The weights according to the volume of the associated rectangle
+	double we[8];
+	//The resulting potential
+	double res = 0;
+	//std::cout << "Weights: " << std::endl;
+	for (int i = 0; i < 8; i++)
+	{
+		gridToWorld(W[i],G[i]);
+		we[i] = abs((W[i][0] - wP[0])*(W[i][1] - wP[1])*(W[i][2] - wP[2])) / _binVolume;
+		//std::cout << i << " " << we[i] << std::endl;
+		res += pots[7-i]*we[i];
+	}
+
+	return res;
+
+}
+
 void capacitor::create_potential_file(std::string ext_pot_path)
 {
 
@@ -124,6 +180,8 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 	bool *_TisBoundary;
     int num_gridpoints = _bins[0]*_bins[1]*_bins[2];
 	double spacing[3] = {_box[0]/_bins[0],_box[1]/_bins[1],_box[2]/_bins[2]};
+	_binVolume = spacing[0]*spacing[1]*spacing[2];
+	double minSpacing = sqrt(2) *  min(spacing[0],min(spacing[1],spacing[2]));
 
     _T =    new double[num_gridpoints]();
     _Tnew = new double[num_gridpoints]();
@@ -132,15 +190,14 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 	//Calc surface points and volume distance grid
 	std::cout << "Get surface, write distance volume data for each electrode" << std::endl;
     std::ofstream surfaceGridFile;
-    std::string fname = "./surfaceGrid.txt";
-    surfaceGridFile.open(fname.c_str());
+    surfaceGridFile.open((ext_pot_path + std::string("_surfaceGrid")).c_str());
     for (int i = 0; i < _electrodes.size(); i++)
     {
         std::cout << "Electrode #" << i << std::endl;
 
         std::ofstream distVolumeGridFile;
-        fname = "./distVolumeGrid" + intToString(i) + ".txt";
-        distVolumeGridFile.open(fname.c_str());
+        //fname = "./distVolumeGrid" + intToString(i) + ".txt";
+        distVolumeGridFile.open((ext_pot_path + std::string("_distMap_el" + intToString(i))).c_str());
 
         int cnt = 0;
         for (int x = 0; x < _bins[0]; x++)
@@ -281,14 +338,58 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     potVolumeGridFile.close();
     potVolumeGridFileWCoords.close();
 
+	//Calculate vacuum surface charge
+    std::cout << std::endl << "Save Surface charge to file" << std::endl;
+    std::ofstream surfaceChargesFile,normalPointsFile;
+    surfaceChargesFile.open((ext_pot_path + std::string("_scharge")).c_str());
+    normalPointsFile.open((ext_pot_path + std::string("_normalPoints")).c_str());
+	double pref = _eps_0;
+	double indChargeSum = 0;
+    for (int i = 0; i < _electrodes.size(); i++)
+	{
+		for (int j = 0; j < _electrodes[i]._numFaces; j++)	
+		{
+			double nP[3] = {_electrodes[i]._triangles[j].center[0] + _electrodes[i]._triangles[j].normal[0]*(2.0*_surface_prec+minSpacing),
+			                _electrodes[i]._triangles[j].center[1] + _electrodes[i]._triangles[j].normal[1]*(2.0*_surface_prec+minSpacing),
+			                _electrodes[i]._triangles[j].center[2] + _electrodes[i]._triangles[j].normal[2]*(2.0*_surface_prec+minSpacing)};
+
+			normalPointsFile << nP[0] << " " << nP[1] << " " << nP[2] << std::endl;
+
+            int G[3] =  {0,0,0};
+            worldToGrid(nP, G);
+			int k = gridToFlatArrayIndex(G);
+
+			double interpolatedPot = interpolatePotOnWorldPoint(_T,nP);
+
+            if (abs(_T[k]-interpolatedPot) > 1)
+			{
+				std::cout << "Warning: Large difference between potential at next grid point and interpolated potential" << std::endl;
+				std::cout << "Pot at next gridpoint: " << _T[k] << std::endl;
+				std::cout << "Interpolated Pot: " << interpolatedPot << std::endl;
+			}
+
+			if (_TisBoundary[k])
+				std::cout << "Warning: Next grid point of surface normal point is boundary" << std::endl;
+
+			double indCharge = (_electrodes[i].pot - interpolatedPot) * _electrodes[i]._triangles[j].area * pref;
+			indChargeSum+= indCharge;
+            surfaceChargesFile << _electrodes[i]._triangles[j].center[0] << " " << _electrodes[i]._triangles[j].center[1] << " " << _electrodes[i]._triangles[j].center[2] << " " << indCharge << "\n";
+		}
+	
+	}
+	surfaceChargesFile.close();
+	normalPointsFile.close();
+	std::cout << "Total induced charge: " << indChargeSum << std::endl;
+
 	delete[] _T;
 	delete[] _Tnew;
 	delete[] _TisBoundary; 
 }
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence, std::string ext_pot_path) 
+
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence, double eps_0, std::string ext_pot_path) 
 {
-	capacitor cap(geofiles, potentials, bins, surface_prec, num_iter, convergence);
+	capacitor cap(geofiles, potentials, bins, surface_prec, num_iter, convergence, eps_0);
 	cap.create_potential_file(ext_pot_path);
 
 	return 0;

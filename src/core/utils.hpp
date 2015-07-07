@@ -426,7 +426,7 @@ inline void vecscale(double v[3], double s)
     v[i] *= s;
 }
 
-/** Subtracts vector v2 from vector v1 and stores resuld in vector dv */
+/** Subtracts vector v2 from vector v1 and stores result in vector dv */
 inline void vecsub(double v1[3], double v2[3], double dv[3])
 {
   dv[0] = v1[0] - v2[0];
@@ -434,6 +434,13 @@ inline void vecsub(double v1[3], double v2[3], double dv[3])
   dv[2] = v1[2] - v2[2];
 }
 
+/** Adds vector v1 to vector v2 and stores result in vector dv */
+inline void vecadd(double v1[3], double v2[3], double dv[3])
+{
+  dv[0] = v1[0] + v2[0];
+  dv[1] = v1[1] + v2[1];
+  dv[2] = v1[2] + v2[2];
+}
 
 /** calculates the length of a vector */
 inline double normr(double v[3]) {

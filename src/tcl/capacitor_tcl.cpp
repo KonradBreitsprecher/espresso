@@ -38,14 +38,14 @@ int tclcommand_gen_pot_from_mesh(ClientData data, Tcl_Interp *interp, int argc, 
 {
   //char buffer[TCL_DOUBLE_SPACE];
   std::string ext_pot_path; 
-  double surface_prec,convergence;
+  double surface_prec,convergence,eps_0;
   int num_electrodes=0,num_iter;
   std::vector<std::string> geofiles;
   std::vector<double> potentials;
   std::vector<int> bins;
   
   if(argc < 3) { 
-         Tcl_AppendResult(interp, "Usage of generate_potential_from_mesh: NUM_ELECTRODES [(1-N)GEOMETRY-FILES] [(1-N)POTENTIALS] [BINS_X BINS_Y BINS_Z] SURFACE_PREC NUM_ITERATIONS CONVERGENCE PATH_TO_EXT_POT", (char *)NULL); 
+         Tcl_AppendResult(interp, "Usage of generate_potential_from_mesh: NUM_ELECTRODES [(1-N)GEOMETRY-FILES] [(1-N)POTENTIALS] [BINS_X BINS_Y BINS_Z] SURFACE_PREC NUM_ITERATIONS CONVERGENCE EPSILON_0 PATH_TO_EXT_POT", (char *)NULL);
          return (TCL_ERROR); 
    }
   else {
@@ -56,8 +56,8 @@ int tclcommand_gen_pot_from_mesh(ClientData data, Tcl_Interp *interp, int argc, 
 		  Tcl_AppendResult(interp, "generate_potential_from_mesh: First argument has to be the number of electrodes", (char *)NULL); 
 		  return (TCL_ERROR);
 	  }
-	  if (argc != 7) {
-		  Tcl_AppendResult(interp, "Expecting [(1-N)GEOMETRY-FILES] [(1-N)POTENTIALS] [BIN_X BIN_Y BIN_Z] SURFACE_PREC NUM_ITERATIONS CONVERGENCE PATH_TO_EXT_POT",  (char *)NULL); 
+	  if (argc != 8) {
+		  Tcl_AppendResult(interp, "Expecting [(1-N)GEOMETRY-FILES] [(1-N)POTENTIALS] [BIN_X BIN_Y BIN_Z] SURFACE_PREC NUM_ITERATIONS CONVERGENCE EPSILON_0 PATH_TO_EXT_POT",  (char *)NULL); 
 		  return (TCL_ERROR);
 	  } else {
 		  std::istringstream ss(argv[0]);
@@ -110,12 +110,17 @@ int tclcommand_gen_pot_from_mesh(ClientData data, Tcl_Interp *interp, int argc, 
 			  Tcl_AppendResult(interp, "Expecting convergence criteria for jabobi relaxation\n" , (char *)NULL);
 			  return TCL_ERROR;
 		  }
+		  
+		  if (!ARG_IS_D(6, eps_0)) {
+			  Tcl_AppendResult(interp, "Expecting vacuum permittivity\n" , (char *)NULL);
+			  return TCL_ERROR;
+		  }
 
-		  ext_pot_path.assign(argv[6]);
+		  ext_pot_path.assign(argv[7]);
 
 	  }
   }   
-  setup_capacitor(geofiles, potentials, bins, surface_prec, num_iter, convergence, ext_pot_path);
+  setup_capacitor(geofiles, potentials, bins, surface_prec, num_iter, convergence, eps_0, ext_pot_path);
 
   return TCL_OK;
 }

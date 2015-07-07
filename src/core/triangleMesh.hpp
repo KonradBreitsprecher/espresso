@@ -37,6 +37,7 @@ typedef struct
         double edgeStart2D[9][2];
         double helperGradients[9][2];
         double area;
+		double center[3];
         double clockwise;
 } triangle;
 
@@ -47,11 +48,11 @@ class triangleMesh
         triangleMesh(std::string pathToMeshfile);
 		~triangleMesh();
 		double sqrDistToMesh(double P[3]);
+        triangle* _triangles;
+        long _numFaces;
     	//static int triangleMesh_to_distanceMapLatticeFile(Constraint_mesh *c, char* filename);
     protected:
     private:
-        triangle* _triangles;
-        long _numFaces;
         long getNumFaces(std::string pathToMeshfile);
         void transformPoint(int i, double P[3], double pt[3]);
         void transformPoint2D(int i, double P[3], double pt2D[2]);

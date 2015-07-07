@@ -127,6 +127,12 @@ triangleMesh::triangleMesh(std::string pathToMeshfile)
 					_triangles[faceCnt].clockwise = 1;
 				}
 
+				_triangles[faceCnt].center[0] = (_triangles[faceCnt].vertices[0][0]+_triangles[faceCnt].vertices[1][0]+_triangles[faceCnt].vertices[2][0])/3.0;
+				_triangles[faceCnt].center[1] = (_triangles[faceCnt].vertices[0][1]+_triangles[faceCnt].vertices[1][1]+_triangles[faceCnt].vertices[2][1])/3.0;
+				_triangles[faceCnt].center[2] = (_triangles[faceCnt].vertices[0][2]+_triangles[faceCnt].vertices[1][2]+_triangles[faceCnt].vertices[2][2])/3.0;
+
+				_triangles[faceCnt].area = area_triangle(_triangles[faceCnt].vertices[0],_triangles[faceCnt].vertices[1],_triangles[faceCnt].vertices[2]);
+
 				faceCnt++;
 			}
 		}

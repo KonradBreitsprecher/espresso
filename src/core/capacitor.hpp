@@ -3,6 +3,7 @@
 
 #include "triangleMesh.hpp"
 #include "grid.hpp"
+#include "interaction_data.hpp"
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -25,7 +26,7 @@ class capacitor
 {
     public:
 		capacitor();
-        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence);
+        capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins, double surface_prec, int num_iter, double convergence, double eps_0);
 		void create_potential_file(std::string ext_pot_path); 
     protected:
     private:
@@ -34,12 +35,12 @@ class capacitor
 		int gridToFlatArrayIndex(int gridPoint[3]);
 		int translatedGrid(int* G, int dim, int ds);
 		double getNeighbourSum(double* data, int* G);
-		
+		double interpolatePotOnWorldPoint(double* data, double wP[3]);
 		std::vector<electrode> _electrodes;
-		double _box[3], _offset[3], _pref[3],_surface_prec,_convergence;
+		double _box[3], _pref[3],_surface_prec,_convergence,_binVolume,_eps_0;
 		int _bins[3],_num_iter;
 };
 
-int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins,double surface_prec, int num_iter, double convergence, std::string ext_pot_path);
+int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins,double surface_prec, int num_iter, double convergence, double eps_0, std::string ext_pot_path);
 
 #endif // CAPACITOR_H
