@@ -154,7 +154,7 @@ typedef struct {
 /*******************************/
 
 /* create system structure with all zeros. Filled in maggs_set_parameters(); */
-MAGGS_struct maggs = { 1, 1.0, 0. , 0. , 0. , 0. , 0. , 0 , 0. , 0. , {{0.},{0.}}};
+MAGGS_struct maggs = { 1, 0, 1.0, 1.0, 0. , 0. , 0. , 0. , 0. , 0 , 0. , 0. , {{0.},{0.}}};
 
 /* local mesh. */
 static lattice_parameters lparams;
@@ -671,11 +671,11 @@ void maggs_setup_local_lattice()
 	
   lparams.volume    = xyzcube;
   /** allocate memory for sites and neighbors */
-  lattice  = (t_site*) malloc(xyzcube*sizeof(t_site));
-  neighbor = (t_dirs*) malloc(xyzcube*sizeof(t_dirs));
+  lattice  = (t_site*) Utils::malloc(xyzcube*sizeof(t_site));
+  neighbor = (t_dirs*) Utils::malloc(xyzcube*sizeof(t_dirs));
 	
-  Bfield   = (double*) malloc(3*xyzcube*sizeof(double));
-  Dfield   = (double*) malloc(3*xyzcube*sizeof(double));
+  Bfield   = (double*) Utils::malloc(3*xyzcube*sizeof(double));
+  Dfield   = (double*) Utils::malloc(3*xyzcube*sizeof(double));
 	
   /** set up lattice sites */
   FORALL_SITES(ix, iy, iz) {
@@ -799,15 +799,97 @@ int maggs_get_mesh_1D()
 double maggs_set_permittivity(int node_x, int node_y, int node_z, int direction, double relative_epsilon)
 {
     int node_index = maggs_get_linear_index(node_x, node_y, node_z, lparams.dim);
-    /* save and return old epsilon for information purposes */
-    double epsilon_before = lattice[node_index].permittivity[direction];
-    /* set relative epsilon */
-    lattice[node_index].permittivity[direction] = relative_epsilon;
+    int dim, on_this_node = 0;
+    double position;
+    double node[3] = {(double)node_x, (double)node_y, (double)node_z};
+    
+    FOR3D(dim) {
+        position = (double)node[dim]/(double)lparams.dim[dim] * box_l[dim];
+        position = node[dim];
+        if ( position >= lparams.halo_left_down[dim] && position < lparams.halo_upper_right[dim] ) {
+            on_this_node = 0;
+            if (this_node)
+                fprintf(stderr, "EPSILON! %d\n", this_node);
+        } else {
+            on_this_node = 0;
+        }
+    }
+    
+    if (on_this_node) {
+        /* save and return old epsilon for information purposes */
+        double epsilon_before = lattice[node_index].permittivity[direction];
+        /* set relative epsilon */
+        lattice[node_index].permittivity[direction] = relative_epsilon;
 
-    return epsilon_before;
+        return epsilon_before;
+    } else {
+        return 0.0;
+    }
 }
 
 
+int maggs_set_adaptive_flag(double scaling)
+{
+    maggs.adaptive_flag = 1;
+    maggs.scaling = scaling;
+    return 0;
+}
+
+/** set permittivity adaptively according to salt concentration
+ Use this very carefully, since it assumes a certain set of parameters. The length is not simulation units anymore
+ @param node_x              index of the node in x direction
+ @param node_y              index of the node in y direction
+ @param node_z              index of the node in z direction
+ */
+double maggs_set_adaptive_permittivity(int node_x, int node_y, int node_z)
+{
+    int node_index = maggs_get_linear_index(node_x, node_y, node_z, lparams.dim);
+    int dim, cell_index, on_this_node, i, np = 0;
+    double position;
+    int direction=1;
+    double node[3] = {(double)node_x, (double)node_y, (double)node_z};
+    double concentration=0.0;
+    double relative_epsilon = 1.0;
+    Cell* cell;
+    Particle* p;
+    
+    FOR3D(dim) {
+        cell_index = neighbor[node_index][dim];
+        cell = local_cells.cell[cell_index];
+        p  = cell->part;
+        np = cell->n;
+
+        for(i=0; i<np; i++) {
+            concentration += p[i].p.q;
+        }
+    }
+    
+    concentration /= 0.0000035246;
+    relative_epsilon = 78.5 / (1.0 + 0.278 * concentration) * maggs.scaling;
+    
+    FOR3D(dim) {
+        position = (double)node[dim]/(double)lparams.dim[dim] * box_l[dim];
+        position = node[dim];
+        if ( position >= lparams.halo_left_down[dim] && position < lparams.halo_upper_right[dim] ) {
+            on_this_node = 0;
+            if (this_node)
+                fprintf(stderr, "EPSILON! %d\n", this_node);
+        } else {
+            on_this_node = 0;
+        }
+    }
+    
+    if (on_this_node) {
+        /* save and return old epsilon for information purposes */
+        double epsilon_before = lattice[node_index].permittivity[direction];
+        /* set relative epsilon */
+        lattice[node_index].permittivity[direction] = relative_epsilon;
+        
+        return epsilon_before;
+    } else {
+        return 0.0;
+    }
+}
 
 
 
@@ -846,11 +928,11 @@ void maggs_exchange_surface_patch(double *field, int dim, int e_equil)
     MPI_Type_commit(&yzPlane2D);
 		
     /* create data type for xz plaquette */
-    MPI_Type_hvector(2,1*sizeof(double),2*sizeof(double), MPI_BYTE, &xz_plaq);
+    MPI_Type_create_hvector(2,1*sizeof(double),2*sizeof(double), MPI_BYTE, &xz_plaq);
     /* create data type for a 1D section */
     MPI_Type_contiguous(surface_patch[2].stride, xz_plaq, &oneslice); 
     /* create data type for a 2D xz plane */
-    MPI_Type_hvector(surface_patch[2].nblocks, 1, dim*surface_patch[2].skip*sizeof(double), oneslice, &xzPlane2D);
+    MPI_Type_create_hvector(surface_patch[2].nblocks, 1, dim*surface_patch[2].skip*sizeof(double), oneslice, &xzPlane2D);
     MPI_Type_commit(&xzPlane2D);    
     /* create data type for a 2D xy plane */
     MPI_Type_vector(surface_patch[4].nblocks, 2, dim*surface_patch[4].skip, MPI_DOUBLE, &xyPlane2D);
@@ -931,7 +1013,7 @@ void maggs_exchange_surface_patch(double *field, int dim, int e_equil)
       nblocks = surface_patch[s_dir].nblocks;
 			
       for(l=0; l<nblocks; l++){
-	memcpy(&(field[doffset]), &(field[offset]), stride);
+	memmove(&(field[doffset]), &(field[offset]), stride);
 	offset  += skip;
 	doffset += skip;
       }
@@ -2255,7 +2337,7 @@ void maggs_calc_forces()
 	
   Npart = cells_get_n_particles();
   if(Npart>Npart_old) {
-    grad = (double *) realloc(grad, 12*Npart*sizeof(double));
+    grad = (double *) Utils::realloc(grad, 12*Npart*sizeof(double));
     Npart_old = Npart;
   }
 	

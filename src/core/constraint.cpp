@@ -41,10 +41,11 @@ Constraint *constraints = NULL;
 Constraint *generate_constraint()
 {
   n_constraints++;
-  constraints = (Constraint*)realloc(constraints,n_constraints*sizeof(Constraint));
+  constraints = (Constraint*)Utils::realloc(constraints,n_constraints*sizeof(Constraint));
+  memset(&constraints[n_constraints-1], 0, sizeof(Constraint));
   constraints[n_constraints-1].type = CONSTRAINT_NONE;
   constraints[n_constraints-1].part_rep.p.identity = -n_constraints;
-  
+   
   return &constraints[n_constraints-1];
 }
 
@@ -1088,6 +1089,9 @@ void calculate_pore_dist(Particle *p1, double ppos[3], Particle *c_p, Constraint
   /* upper left smoothing circle */
   if (p2_z <= c1_z && r >= c1_or ) {
     /* distance from the smoothing center */
+    // Since: c2_or_or seems to be set to numeric_limits<double>max(), 
+    // this case being true means, that r is out of numerical limits.
+    // I suggest deleting it!
     norm = sqrt( (z - c1_z)*(z - c1_z) + (r - c1_or)*(r - c1_or) );
     *dist = norm - c->smoothing_radius;
     dist_vector_r=(c->smoothing_radius/norm -1)*(r - c1_or);
@@ -1099,13 +1103,16 @@ void calculate_pore_dist(Particle *p1, double ppos[3], Particle *c_p, Constraint
   if (p1_z >= c2_z && r <= c2_r ) {
     norm = sqrt( (z - c2_z)*(z - c2_z) + (r - c2_r)*(r - c2_r) );
     *dist = norm - c->smoothing_radius;
-    dist_vector_r=(c->smoothing_radius/norm -1)*(r - c2_or);
+    dist_vector_r=(c->smoothing_radius/norm -1)*(r - c2_r);
     dist_vector_z=(c->smoothing_radius/norm - 1)*(z - c2_z);
     for (i=0; i<3; i++) vec[i]=-dist_vector_r*e_r[i] - dist_vector_z*e_z[i];
     return;
   }
   /* Check if we are in the range of the upper right smoothing circle */
   if (p2_z >= c2_z && r >= c2_or ) {
+    // Since: c2_or_or seems to be set to numeric_limits<double>max(), 
+    // this case being true means, that r is out of numerical limits.
+    // I suggest deleting it!
     norm = sqrt( (z - c2_z)*(z - c2_z) + (r - c2_or)*(r - c2_or) );
     *dist = norm - c->smoothing_radius;
     dist_vector_r=(c->smoothing_radius/norm -1)*(r - c2_or);
@@ -2169,6 +2176,52 @@ void calculate_hollow_cone_dist( Particle *p1, double ppos [3],
 }
 
 
+void calculate_voxel_dist(Particle *p1, double ppos[3], Particle *c_p, Constraint_voxel *c, double *dist, double *vec)
+{
+  //int i;
+  //double fac,  c_dist, c_dist_cut;
+  //double vec_cut[3];
+  //double halfgrid = lbpar.agrid/2.0;
+	////printf("n %.0lf %.0lf %.0lf pos %.0lf %.0lf %.0lf \n", c->n[0],c->n[1],c->n[2],c->pos[0],c->pos[1],c->pos[2]);
+	
+  //c_dist=0.0;
+  //c_dist_cut=0.0;
+    //for(i=0;i<3;i++) {
+		//vec[i] = c->pos[i] - ppos[i];
+		//c_dist += SQR(vec[i]);
+		
+		//if(c->n[i] != 0.0) {
+			//vec_cut[i] = vec[i];
+			//c_dist_cut += SQR(vec[i]);
+		//}
+		//else {
+			//vec_cut[i] = 0.0;
+		//}
+  //}
+  
+  //// check if vec[i] is less than half grid length.
+  //if(vec[0]>-halfgrid && vec[0]<halfgrid && vec[1]>-halfgrid && vec[1]<halfgrid && vec[2]>-halfgrid && vec[2]<halfgrid){
+	  //c_dist = sqrt(c_dist_cut);
+	  //for(i=0;i<3;i++) {
+		 //vec[i]= vec_cut[i];
+	  //}
+  //}
+  //else {
+	  //c_dist = sqrt(c_dist);
+  //}
+  
+  ////printf("c_dist %.2lf vec %.2lf %.2lf %.2lf\n", c_dist, vec[0],vec[1],vec[2]);
+  
+    ////*dist = -c_dist;//0.5 - c_dist;
+    ////fac = *dist / c_dist;
+    ////for(i=0;i<3;i++) vec[i] *= fac;
+    
+    //// boundary is half gridlength away from lattice nodes (voxel boundary)
+    //*dist = c_dist - halfgrid;
+    //fac = *dist / c_dist;
+    //for(i=0;i<3;i++) vec[i] *= -fac;
+}
+
 void add_rod_force(Particle *p1, double ppos[3], Particle *c_p, Constraint_rod *c)
 {
 #ifdef ELECTROSTATICS
@@ -2261,11 +2314,11 @@ void reflect_particle(Particle *p1, double *distance_vec, int reflecting) {
       double folded_pos[3];
       int img[3];
 
-      memcpy(folded_pos, p1->r.p, 3*sizeof(double));
-      memcpy(img, p1->l.i, 3*sizeof(int));
+      memmove(folded_pos, p1->r.p, 3*sizeof(double));
+      memmove(img, p1->l.i, 3*sizeof(int));
       fold_position(folded_pos, img);
 
-      memcpy(vec, distance_vec, 3*sizeof(double));
+      memmove(vec, distance_vec, 3*sizeof(double));
 /* For Debugging your can show the folded coordinates of the particle before
  * and after the reflecting by uncommenting these lines  */
  //     printf("position before reflection %f %f %f\n",folded_pos[0], folded_pos[1], folded_pos[2]); 
@@ -2278,8 +2331,8 @@ void reflect_particle(Particle *p1, double *distance_vec, int reflecting) {
        p1->r.p[2] = p1->r.p[2]-2*vec[2];
 
    /*  This can show the folded position after reflection      
-       memcpy(folded_pos, p1->r.p, 3*sizeof(double));
-       memcpy(img, p1->l.i, 3*sizeof(int));
+       memmove(folded_pos, p1->r.p, 3*sizeof(double));
+       memmove(img, p1->l.i, 3*sizeof(int));
        fold_position(folded_pos, img);
        printf("position after reflection %f %f %f\n",folded_pos[0], folded_pos[1], folded_pos[2]); */
 
@@ -2317,8 +2370,8 @@ void add_constraints_forces(Particle *p1)
   int img[3];
 
   /* fold the coordinate[2] of the particle */
-  memcpy(folded_pos, p1->r.p, 3*sizeof(double));
-  memcpy(img, p1->l.i, 3*sizeof(int));
+  memmove(folded_pos, p1->r.p, 3*sizeof(double));
+  memmove(img, p1->l.i, 3*sizeof(int));
   fold_position(folded_pos, img);
 
   for(n=0;n<n_constraints;n++) {
@@ -2583,6 +2636,22 @@ void add_constraints_forces(Particle *p1)
 	      }
       }
     break;
+    
+    case CONSTRAINT_VOXEL:
+      if(checkIfInteraction(ia_params)) {
+	calculate_voxel_dist(p1, folded_pos, &constraints[n].part_rep, &constraints[n].c.voxel, &dist, vec); 
+	if ( dist > 0 ) {
+	  calc_non_bonded_pair_force(p1, &constraints[n].part_rep,
+				     ia_params,vec,dist,dist*dist, force,
+				     torque1, torque2);
+	}
+	else {
+        ostringstream msg;
+        msg << "voxel constraint "<< n <<" violated by particle "<<p1->p.identity;
+        runtimeError(msg);
+	}
+      }
+      break;
 
       /* electrostatic "constraints" */
     case CONSTRAINT_ROD:
@@ -2615,13 +2684,15 @@ void add_constraints_forces(Particle *p1)
         msg <<"plane constraint " << n << " violated by particle " << p1->p.identity;
         runtimeError(msg);
 	}
-      }
+     }
+      break;
+    case CONSTRAINT_NONE:
+      force[0] = force[1] = force[2] = 0.0;
       break;
   default:
       fprintf(stderr, "ERROR: encountered unknown constraint during force computation\n");
       errexit();
       break;
-
     }
     for (j = 0; j < 3; j++) {
       p1->f.f[j] += force[j];
@@ -2644,8 +2715,8 @@ double add_constraints_energy(Particle *p1)
   int img[3];
 
   /* fold the coordinate[2] of the particle */
-  memcpy(folded_pos, p1->r.p, 3*sizeof(double));
-  memcpy(img, p1->l.i, 3*sizeof(int));
+  memmove(folded_pos, p1->r.p, 3*sizeof(double));
+  memmove(img, p1->l.i, 3*sizeof(int));
   fold_position(folded_pos, img);
   for(n=0;n<n_constraints;n++) { 
     ia_params = get_ia_param(p1->p.type, (&constraints[n].part_rep)->p.type);
@@ -2862,6 +2933,20 @@ double add_constraints_energy(Particle *p1)
     {
         if (warnings) fprintf(stderr, "WARNING: energy calculated, but PLANE energy not implemented\n");
     }
+      break;
+  case CONSTRAINT_VOXEL: 
+      if(checkIfInteraction(ia_params)) {
+	calculate_voxel_dist(p1, folded_pos, &constraints[n].part_rep, &constraints[n].c.voxel, &dist, vec); 
+	if ( dist > 0 ) {
+	  nonbonded_en = calc_non_bonded_pair_energy(p1, &constraints[n].part_rep,
+						     ia_params, vec, dist, dist*dist);
+	}
+    else {
+       // ostringstream msg;
+       // msg << "voxel constraint "<< n << " violated by particle " << p1->p.identity;
+       // runtimeError(msg);
+	}
+      }
       break;
   case CONSTRAINT_NONE:
       break;

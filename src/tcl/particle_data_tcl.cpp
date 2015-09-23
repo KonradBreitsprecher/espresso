@@ -75,6 +75,40 @@ void tclcommand_part_print_rotational_inertia(Particle *part, char *buffer, Tcl_
 }
 #endif
 
+#ifdef AFFINITY
+void tclcommand_part_print_affinity(Particle *part, char *buffer, Tcl_Interp *interp)
+  {double bond_site[3];
+
+  bond_site[0]=part->p.bond_site[0];
+  bond_site[1]=part->p.bond_site[1];
+  bond_site[2]=part->p.bond_site[2];
+
+  Tcl_PrintDouble(interp, bond_site[0], buffer);
+  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+  Tcl_PrintDouble(interp, bond_site[1], buffer);
+  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+  Tcl_PrintDouble(interp, bond_site[2], buffer);
+  Tcl_AppendResult(interp, buffer, (char *)NULL);
+}
+#endif
+
+#ifdef MEMBRANE_COLLISION
+void tclcommand_part_print_out_direction(Particle *part, char *buffer, Tcl_Interp *interp)
+{double out_direction[3];
+    
+    out_direction[0]=part->p.out_direction[0];
+    out_direction[1]=part->p.out_direction[1];
+    out_direction[2]=part->p.out_direction[2];
+    
+    Tcl_PrintDouble(interp, out_direction[0], buffer);
+    Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+    Tcl_PrintDouble(interp, out_direction[1], buffer);
+    Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+    Tcl_PrintDouble(interp, out_direction[2], buffer);
+    Tcl_AppendResult(interp, buffer, (char *)NULL);
+}
+#endif
+
 #ifdef ROTATION
 
 /* tclcommand_part_print_*_body_frame: function to have the possiblility of
@@ -176,13 +210,13 @@ void tclcommand_part_print_swimming(Particle *part, char *buffer, Tcl_Interp *in
 #if defined(LB) || defined(LB_GPU)
   sprintf(buffer, " swimming %s %f %f %d %f %f",
       part->swim.swimming?"on":"off",
-      part->swim.v_swim/time_step, part->swim.f_swim,
+      part->swim.v_swim, part->swim.f_swim,
       part->swim.push_pull, part->swim.dipole_length,
       part->swim.rotational_friction);
 #else
   sprintf(buffer, " swimming %s %f %f %s %s %s",
       part->swim.swimming?"on":"off",
-      part->swim.v_swim/time_step, part->swim.f_swim,
+      part->swim.v_swim, part->swim.f_swim,
       "n/a", "n/a", "n/a");
 #endif
 }
@@ -216,21 +250,48 @@ void tclcommand_part_print_rotation(Particle *part, char *buffer, Tcl_Interp *in
 }
 #endif
 
+#ifdef MULTI_TIMESTEP
+void tclcommand_part_print_smaller_timestep(Particle *part, char *buffer, Tcl_Interp *interp)
+{
+  sprintf(buffer,"%i", part->p.smaller_timestep);
+  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+}
+#endif
+
+#ifdef CONFIGTEMP
+void tclcommand_part_print_configtemp(Particle *part, char *buffer, Tcl_Interp *interp)
+{
+  sprintf(buffer,"%i", part->p.configtemp);
+  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+}
+#endif
+
 void tclcommand_part_print_v(Particle *part, char *buffer, Tcl_Interp *interp)
 {
   /* unscale velocities ! */
-  Tcl_PrintDouble(interp, part->m.v[0]/time_step, buffer);
-  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
-  Tcl_PrintDouble(interp, part->m.v[1]/time_step, buffer);
-  Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
-  Tcl_PrintDouble(interp, part->m.v[2]/time_step, buffer);
-  Tcl_AppendResult(interp, buffer, (char *)NULL);
+#ifdef MULTI_TIMESTEP
+  if (smaller_time_step > 0. && part->p.smaller_timestep) {
+    Tcl_PrintDouble(interp, part->m.v[0]/smaller_time_step, buffer);
+      Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+      Tcl_PrintDouble(interp, part->m.v[1]/smaller_time_step, buffer);
+      Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+      Tcl_PrintDouble(interp, part->m.v[2]/smaller_time_step, buffer);
+      Tcl_AppendResult(interp, buffer, (char *)NULL);
+  } else 
+#endif
+  {
+    Tcl_PrintDouble(interp, part->m.v[0]/time_step, buffer);
+    Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+    Tcl_PrintDouble(interp, part->m.v[1]/time_step, buffer);
+    Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
+    Tcl_PrintDouble(interp, part->m.v[2]/time_step, buffer);
+    Tcl_AppendResult(interp, buffer, (char *)NULL);
+  }
 }
 
 #ifdef LB_ELECTROHYDRODYNAMICS
 void tclcommand_part_print_mu_E(Particle *part, char *buffer, Tcl_Interp *interp)
 {
-  /* unscale velocities ! */
   Tcl_PrintDouble(interp, part->p.mu_E[0], buffer);
   Tcl_AppendResult(interp, buffer, " ", (char *)NULL);
   Tcl_PrintDouble(interp, part->p.mu_E[1], buffer);
@@ -278,8 +339,8 @@ void tclcommand_part_print_position(Particle *part, char *buffer, Tcl_Interp *in
 {
   double ppos[3];
   int img[3];
-  memcpy(ppos, part->r.p, 3*sizeof(double));
-  memcpy(img, part->l.i, 3*sizeof(int));
+  memmove(ppos, part->r.p, 3*sizeof(double));
+  memmove(img, part->l.i, 3*sizeof(int));
  
   unfold_position(ppos, img);
 
@@ -296,9 +357,9 @@ void tclcommand_part_print_folded_position(Particle *part, char *buffer, Tcl_Int
   double ppos[3];
   int    img[3];
   double pvel[3];
-  memcpy(ppos, part->r.p, 3*sizeof(double));
-  memcpy(img, part->l.i, 3*sizeof(int));
-  memcpy(pvel, part->m.v, 3*sizeof(double));
+  memmove(ppos, part->r.p, 3*sizeof(double));
+  memmove(img, part->l.i, 3*sizeof(int));
+  memmove(pvel, part->m.v, 3*sizeof(double));
 
   fold_position(ppos, pvel, img);
   
@@ -353,7 +414,7 @@ void tclcommand_part_print_bond_partners(Particle *part, char *buffer, Tcl_Inter
 
   /* setup bond partners and distance list. Since we need to identify particles via their identity,
      we use a full sized array */
-  partners    = (IntList*)malloc((max_seen_particle + 1)*sizeof(IntList));
+  partners    = (IntList*)Utils::malloc((max_seen_particle + 1)*sizeof(IntList));
   for (p = 0; p <= max_seen_particle; p++) init_intlist(&partners[p]);
   updatePartCfg(WITH_BONDS);
 
@@ -375,7 +436,7 @@ void tclcommand_part_print_bond_partners(Particle *part, char *buffer, Tcl_Inter
 
   /* Create links to particle */
   distance++;
-  links    = (IntList*)malloc((distance+1)*sizeof(IntList));
+  links    = (IntList*)Utils::malloc((distance+1)*sizeof(IntList));
   for( c = 0; c <= distance; c++)  init_intlist(&links[c]);
 
   p1 = part->p.identity;
@@ -566,6 +627,18 @@ int tclprint_to_result_Particle(Tcl_Interp *interp, int part_num)
   tclcommand_part_print_rotational_inertia(&part, buffer, interp);
 #endif
 
+#ifdef AFFINITY
+  /* print information about affinity */
+  Tcl_AppendResult(interp, " affinity ", (char *)NULL);
+  tclcommand_part_print_affinity(&part, buffer, interp);
+#endif
+    
+#ifdef MEMBRANE_COLLISION
+    /* print information about membrane collision */
+    Tcl_AppendResult(interp, " out_direction ", (char *)NULL);
+    tclcommand_part_print_out_direction(&part, buffer, interp);
+#endif
+
 #ifdef DIPOLES
 #ifndef ROTATION
   /* print full information about dipoles, no quaternions to keep
@@ -590,8 +663,25 @@ int tclprint_to_result_Particle(Tcl_Interp *interp, int part_num)
 #ifdef VIRTUAL_SITES_RELATIVE
   // print the particle attributes used by the "relative" implementation of virtual sites
   Tcl_AppendResult(interp, " vs_relative ", (char *)NULL);
-  sprintf(buffer, "%d %f", part.p.vs_relative_to_particle_id, part.p.vs_relative_distance);
+  sprintf(buffer, "%d %f %f %f %f %f", part.p.vs_relative_to_particle_id, part.p.vs_relative_distance,
+   part.p.vs_relative_rel_orientation[0], 
+   part.p.vs_relative_rel_orientation[1], 
+   part.p.vs_relative_rel_orientation[2], 
+   part.p.vs_relative_rel_orientation[3] 
+  );
   Tcl_AppendResult(interp, buffer, (char *)NULL);
+#endif
+
+#ifdef MULTI_TIMESTEP
+  /* print information about smaller_timestep */
+  Tcl_AppendResult(interp, " smaller_timestep ", (char *)NULL);
+  tclcommand_part_print_smaller_timestep(&part, buffer, interp);
+#endif
+
+#ifdef CONFIGTEMP
+  /* print information about configtemp */
+  Tcl_AppendResult(interp, " configtemp ", (char *)NULL);
+  tclcommand_part_print_configtemp(&part, buffer, interp);
 #endif
 
 #ifdef EXCLUSIONS
@@ -779,6 +869,16 @@ int tclcommand_part_parse_print(Tcl_Interp *interp, int argc, char **argv,
       tclcommand_part_print_rotational_inertia(&part, buffer, interp);
 #endif
 
+#ifdef AFFINITY
+    else if (ARG0_IS_S("affinity"))
+      tclcommand_part_print_affinity(&part, buffer, interp);
+#endif
+
+#ifdef MEMBRANE_COLLISION
+    else if (ARG0_IS_S("out_direction"))
+        tclcommand_part_print_out_direction(&part, buffer, interp);
+#endif
+      
 #ifdef DIPOLES
     else if (ARG0_IS_S("dip"))
       tclcommand_part_print_dip(&part, buffer, interp);
@@ -794,9 +894,24 @@ int tclcommand_part_parse_print(Tcl_Interp *interp, int argc, char **argv,
 #endif
 #ifdef VIRTUAL_SITES_RELATIVE    
      else if (ARG0_IS_S("vs_relative")) {
-       sprintf(buffer, "%d %f", part.p.vs_relative_to_particle_id, part.p.vs_relative_distance);
+       sprintf(buffer, "%d %f %f %f %f %f", part.p.vs_relative_to_particle_id, part.p.vs_relative_distance,
+        part.p.vs_relative_rel_orientation[0],
+        part.p.vs_relative_rel_orientation[1],
+        part.p.vs_relative_rel_orientation[2],
+        part.p.vs_relative_rel_orientation[3]
+       );
        Tcl_AppendResult(interp, buffer, (char *)NULL);
      }
+#endif
+
+#ifdef MULTI_TIMESTEP
+    else if (ARG0_IS_S("smaller_timestep"))
+      tclcommand_part_print_smaller_timestep(&part, buffer, interp);
+#endif
+
+#ifdef CONFIGTEMP
+    else if (ARG0_IS_S("configtemp"))
+      tclcommand_part_print_configtemp(&part, buffer, interp);
 #endif
 
 #ifdef EXTERNAL_FORCES
@@ -974,6 +1089,11 @@ int tclcommand_part_parse_rotation(Tcl_Interp *interp, int argc, char **argv,
     /* set rotation flag */
     if (! ARG0_IS_I(rot))
       return TCL_ERROR;
+    
+    if (rot == 1) {
+      Tcl_AppendResult(interp, "1 is no longer an allowed value for rotation. See documentation.", (char *) NULL);
+      return TCL_ERROR;
+    }
 
     if (set_particle_rotation(part_num, rot) == TCL_ERROR) {
       Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
@@ -1012,6 +1132,61 @@ int tclcommand_part_parse_rotational_inertia(Tcl_Interp *interp, int argc, char 
   return TCL_OK;
 }
 #endif
+
+#ifdef  AFFINITY
+int tclcommand_part_parse_affinity(Tcl_Interp *interp, int argc, char **argv,
+				  int part_num, int * change)
+{
+  double bond_site[3];
+
+  *change = 3;
+
+  if (argc < 3) {
+    Tcl_AppendResult(interp, "affinity requires 3 arguments", (char *) NULL);
+    return TCL_ERROR;
+  }
+
+  /* set affinity */
+  if (! ARG_IS_D(0, bond_site[0]) || ! ARG_IS_D(1, bond_site[1]) || ! ARG_IS_D(2, bond_site[2]))
+    return TCL_ERROR;
+
+  if (set_particle_affinity(part_num, bond_site) == TCL_ERROR) {
+    Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
+
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+#endif
+
+#ifdef  MEMBRANE_COLLISION
+int tclcommand_part_parse_oif_out_direction(Tcl_Interp *interp, int argc, char **argv,
+                                   int part_num, int * change)
+{
+    double out_direction[3];
+    
+    *change = 3;
+    
+    if (argc < 3) {
+        Tcl_AppendResult(interp, "outward direction of membrane requires 3 arguments", (char *) NULL);
+        return TCL_ERROR;
+    }
+    
+    /* set out_direction */
+    if (! ARG_IS_D(0, out_direction[0]) || ! ARG_IS_D(1, out_direction[1]) || ! ARG_IS_D(2, out_direction[2]))
+        return TCL_ERROR;
+    
+    if (set_particle_out_direction(part_num, out_direction) == TCL_ERROR) {
+        Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
+        
+        return TCL_ERROR;
+    }
+    
+    return TCL_OK;
+}
+#endif
+
 
 #ifdef DIPOLES
 int tclcommand_part_parse_dipm(Tcl_Interp *interp, int argc, char **argv,
@@ -1063,8 +1238,11 @@ int tclcommand_part_parse_dip(Tcl_Interp *interp, int argc, char **argv,
   /* convenience error message, dipm is not used otherwise. */
   dipm = dip[0]*dip[0] + dip[1]*dip[1] + dip[2]*dip[2];
   if (dipm < ROUND_ERROR_PREC) {
-    Tcl_AppendResult(interp, "cannot set dipole with zero length", (char *)NULL);
-    return TCL_ERROR;
+    if (set_particle_dipm(part_num, dipm) == TCL_ERROR) {
+      Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
+      return TCL_ERROR;
+    }
+    return TCL_OK;
   }
 
   if (set_particle_dip(part_num, dip) == TCL_ERROR) {
@@ -1112,13 +1290,14 @@ int part_parse_vs_relative(Tcl_Interp *interp, int argc, char **argv,
     // See particle_data.hpp for explanation of the quantities
     int vs_relative_to;
     double vs_distance;
+    double rel_ori[4];
 
     // We consume two arguments after the vs_relative:
-    *change = 2;
+    *change = 6;
 
     // Validate input
-    if (argc < 2) {
-      Tcl_AppendResult(interp, "vs_relative needs the id of the particle to which the virtual site is related and the distnace it should have from that particle as arguments.", (char *) NULL);
+    if (argc < 6) {
+      Tcl_AppendResult(interp, "vs_relative needs the id of the particle to which the virtual site is related, the distnace it should have from that particle,  and the relative orientation as arguments.", (char *) NULL);
       return TCL_ERROR;
     }
 
@@ -1128,8 +1307,17 @@ int part_parse_vs_relative(Tcl_Interp *interp, int argc, char **argv,
     
     if (! ARG1_IS_D(vs_distance))
       return TCL_ERROR;
+    
+    if (! ARG_IS_D(2,rel_ori[0]))
+      return TCL_ERROR;
+    if (! ARG_IS_D(3,rel_ori[1]))
+      return TCL_ERROR;
+    if (! ARG_IS_D(4,rel_ori[2]))
+      return TCL_ERROR;
+    if (! ARG_IS_D(5,rel_ori[3]))
+      return TCL_ERROR;
 
-    if (set_particle_vs_relative(part_num, vs_relative_to, vs_distance) == TCL_ERROR) {
+    if (set_particle_vs_relative(part_num, vs_relative_to, vs_distance,rel_ori) == TCL_ERROR) {
       Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
 
       return TCL_ERROR;
@@ -1168,7 +1356,60 @@ int part_parse_vs_relate_to(Tcl_Interp *interp, int argc, char **argv,
 
 #endif
 
+#ifdef MULTI_TIMESTEP
+int tclcommand_part_parse_smaller_timestep(Tcl_Interp *interp, int argc, char **argv,
+     int part_num, int * change)
+{
+    int smaller_timestep;
 
+    *change = 1;
+
+    if (argc < 1) {
+      Tcl_AppendResult(interp, "smaller_timestep requires 1 argument", (char *) NULL);
+      return TCL_ERROR;
+    }
+
+    /* set smaller_timestep */
+    if (! ARG0_IS_I(smaller_timestep))
+      return TCL_ERROR;
+
+    if (set_particle_smaller_timestep(part_num, smaller_timestep) == TCL_ERROR) {
+      Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
+
+      return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+#endif
+
+
+#ifdef CONFIGTEMP
+int tclcommand_part_parse_configtemp(Tcl_Interp *interp, int argc, char **argv,
+     int part_num, int * change)
+{
+    int configtemp;
+
+    *change = 1;
+
+    if (argc < 1) {
+      Tcl_AppendResult(interp, "configtemp requires 1 argument", (char *) NULL);
+      return TCL_ERROR;
+    }
+
+    /* set smaller_timestep */
+    if (! ARG0_IS_I(configtemp))
+      return TCL_ERROR;
+
+    if (set_particle_configtemp(part_num, configtemp) == TCL_ERROR) {
+      Tcl_AppendResult(interp, "set particle position first", (char *)NULL);
+
+      return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+#endif
 
 
 int tclcommand_part_parse_q(Tcl_Interp *interp, int argc, char **argv,
@@ -1288,6 +1529,7 @@ int tclcommand_part_parse_f(Tcl_Interp *interp, int argc, char **argv,
     return TCL_ERROR;
 
   /* rescale forces */
+  ///\todo{scale with particle mass}
   f[0] *= (0.5*time_step*time_step);
   f[1] *= (0.5*time_step*time_step);
   f[2] *= (0.5*time_step*time_step);
@@ -1390,8 +1632,6 @@ int tclcommand_part_parse_swimming(Tcl_Interp *interp, int argc, char **argv,
       } else if ( p.swim.f_swim > 0.0 || p.swim.f_swim < 0.0 ) {
         printf("You can't set v_swim and f_swim at the same time!\n");
         return TCL_ERROR;
-      } else {
-        p.swim.v_swim *= time_step;
       }
     } else if ( ARG_IS_S(*change,"f_swim") ) {
       if ( !ARG_IS_D(++(*change),p.swim.f_swim) ) {
@@ -1432,6 +1672,88 @@ int tclcommand_part_parse_swimming(Tcl_Interp *interp, int argc, char **argv,
       break;
    }
 #endif
+
+    if ( ++(*change) >= argc ) {
+      parse = false;
+      break;
+    }
+  }
+
+  if (set_particle_swimming(part_num, p.swim) == TCL_ERROR) {
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+int tclcommand_part_parse_swimming_blockfile(Tcl_Interp *interp, int argc, char **argv,
+		      int part_num, int *change)
+{
+  Particle p;
+  get_particle_data(part_num, &p);
+  p.swim.swimming = true;
+
+  *change = 0;
+  bool parse = true;
+  while ( parse ) {
+    if ( ARG_IS_S(*change,"on") ) {
+      // Do nothing
+    } else if ( ARG_IS_S(*change,"off") ) {
+      // Revert to defaults
+      p.swim.swimming = false;
+      p.swim.v_swim = 0.0;
+      p.swim.f_swim = 0.0;
+#if defined(LB) || defined(LB_GPU)
+      p.swim.push_pull = 0;
+      p.swim.dipole_length = 0.0;
+      p.swim.rotational_friction = 0.0;
+#endif
+    } else if ( ARG_IS_S(*change,"v_swim") ) {
+      if ( !ARG_IS_D(++(*change),p.swim.v_swim) ) {
+        return TCL_ERROR;
+      }
+    } else if ( ARG_IS_S(*change,"f_swim") ) {
+      if ( !ARG_IS_D(++(*change),p.swim.f_swim) ) {
+        return TCL_ERROR;
+      }
+    }
+    else if ( ARG_IS_S(*change,"push_pull") ) {
+#if defined(LB) || defined(LB_GPU)
+      if ( !ARG_IS_I(++(*change),p.swim.push_pull) ) {
+        return TCL_ERROR;
+      }
+#else
+      (*change)++;
+      if ( !ARG_IS_S(*change,"n/a") ) {
+        return TCL_ERROR;
+      }
+#endif
+    } else if ( ARG_IS_S(*change,"dipole_length") ) {
+#if defined(LB) || defined(LB_GPU)
+      if ( !ARG_IS_D(++(*change),p.swim.dipole_length) ) {
+        return TCL_ERROR;
+      }
+#else
+      (*change)++;
+      if ( !ARG_IS_S(*change,"n/a") ) {
+        return TCL_ERROR;
+      }
+#endif
+    } else if ( ARG_IS_S(*change,"rotational_friction") ) {
+#if defined(LB) || defined(LB_GPU)
+      if ( !ARG_IS_D(++(*change),p.swim.rotational_friction) ) {
+        return TCL_ERROR;
+      }
+#else
+      (*change)++;
+      if ( !ARG_IS_S(*change,"n/a") ) {
+        return TCL_ERROR;
+      }
+#endif
+    } else {
+      parse = false;
+      break;
+    }
 
     if ( ++(*change) >= argc ) {
       parse = false;
@@ -1978,7 +2300,7 @@ int tclcommand_part_parse_bond(Tcl_Interp *interp, int argc, char **argv,
   if (argc == 1) {
     /* check for the new, nested Tcl-list format */
     int param1, tmp_argc;
-    char  **tmp_argv;
+    const char  **tmp_argv;
     bond = NULL;
 
     if (!particle_node)
@@ -1988,7 +2310,7 @@ int tclcommand_part_parse_bond(Tcl_Interp *interp, int argc, char **argv,
 
     for(param1 = 0 ; param1 < tmp_argc; param1++) {
       int tmp2_argc;
-      char  **tmp2_argv;
+      const char  **tmp2_argv;
       Tcl_SplitList(interp, tmp_argv[param1], &tmp2_argc, &tmp2_argv);
       if (tmp2_argc < 1) {
 	Tcl_AppendResult(interp, "usage: part <p> bond <type> <partner>+\n", (char *) NULL);
@@ -2012,7 +2334,7 @@ int tclcommand_part_parse_bond(Tcl_Interp *interp, int argc, char **argv,
 	return TCL_ERROR;
       }
 
-      bond = (int *)malloc( (n_partners+1)*sizeof(int) );
+      bond = (int *)Utils::malloc( (n_partners+1)*sizeof(int) );
       bond[0] = type_num;
       j=1;
       while(j <= n_partners) {
@@ -2072,7 +2394,7 @@ int tclcommand_part_parse_bond(Tcl_Interp *interp, int argc, char **argv,
       printf("bonded_ia_params[%d].type=%d  ",type_num,bonded_ia_params[type_num].type);
       printf("n_partners=%d  ",n_partners);
       printf("argc=%d\n",argc);
-      sprintf(buffer, "bond type %d requires %d arguments.",
+      sprintf(buffer, "bond type A %d requires %d arguments.",
 	      type_num, n_partners+1);
       Tcl_AppendResult(interp, buffer, (char *) NULL);
       return TCL_ERROR;
@@ -2081,7 +2403,7 @@ int tclcommand_part_parse_bond(Tcl_Interp *interp, int argc, char **argv,
     if (!particle_node)
       build_particle_node();
 
-    bond = (int *)malloc( (n_partners+1)*sizeof(int) );
+    bond = (int *)Utils::malloc( (n_partners+1)*sizeof(int) );
     bond[0] = type_num;
     j=1;
     while(j <= n_partners) {
@@ -2206,6 +2528,8 @@ int tclcommand_part_parse_cmd(Tcl_Interp *interp, int argc, char **argv,
 #ifdef ENGINE
     else if (ARG0_IS_S("swimming"))
       err = tclcommand_part_parse_swimming(interp, argc-1, argv+1, part_num, &change);
+    else if (ARG0_IS_S("__swimming_blockfile"))
+      err = tclcommand_part_parse_swimming_blockfile(interp, argc-1, argv+1, part_num, &change);
 #endif
 #ifdef MASS
     else if (ARG0_IS_S("mass"))
@@ -2286,6 +2610,15 @@ int tclcommand_part_parse_cmd(Tcl_Interp *interp, int argc, char **argv,
       err = tclcommand_part_parse_rotation(interp, argc-1, argv+1, part_num, &change);
 #endif
 
+#ifdef AFFINITY
+    else if (ARG0_IS_S("affinity"))
+      err = tclcommand_part_parse_affinity(interp, argc-1, argv+1, part_num, &change);
+#endif
+      
+#ifdef MEMBRANE_COLLISION
+    else if (ARG0_IS_S("membrane"))
+        err = tclcommand_part_parse_oif_out_direction(interp, argc-1, argv+1, part_num, &change);
+#endif
 
 #ifdef DIPOLES
     else if (ARG0_IS_S("dip")) {
@@ -2325,6 +2658,20 @@ int tclcommand_part_parse_cmd(Tcl_Interp *interp, int argc, char **argv,
       err = part_parse_vs_relative(interp, argc-1, argv+1, part_num, &change);
     else if (ARG0_IS_S("vs_auto_relate_to"))
       err = part_parse_vs_relate_to(interp, argc-1, argv+1, part_num, &change);
+#endif
+
+#ifdef MULTI_TIMESTEP
+
+    else if (ARG0_IS_S("smaller_timestep"))
+      err = tclcommand_part_parse_smaller_timestep(interp, argc-1, argv+1, part_num, &change);
+
+#endif
+
+#ifdef CONFIGTEMP
+
+    else if (ARG0_IS_S("configtemp"))
+      err = tclcommand_part_parse_configtemp(interp, argc-1, argv+1, part_num, &change);
+
 #endif
 
 #ifdef EXTERNAL_FORCES

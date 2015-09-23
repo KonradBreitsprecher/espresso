@@ -32,6 +32,8 @@
 #include "comfixed_tcl.hpp"
 #include "rattle_tcl.hpp"
 #include "mol_cut_tcl.hpp"
+#include "actor/DipolarDirectSum_tcl.hpp" 
+
 
 // for the force caps
 #include "lj.hpp"
@@ -56,11 +58,14 @@
 #include "ljangle_tcl.hpp"
 #include "ljcos_tcl.hpp"
 #include "ljcos2_tcl.hpp"
+#include "cos2_tcl.hpp"
 #include "ljgen_tcl.hpp"
 #include "hertzian_tcl.hpp"
 #include "morse_tcl.hpp"
 #include "dpd_tcl.hpp"
 #include "soft_sphere_tcl.hpp"
+#include "object-in-fluid/affinity_tcl.hpp"
+#include "object-in-fluid/membrane_collision_tcl.hpp"
 #include "steppot_tcl.hpp"
 #include "tab_tcl.hpp"
 #include "tunable_slip_tcl.hpp"
@@ -91,20 +96,24 @@
 #include "endangledist_tcl.hpp"
 #include "fene_tcl.hpp"
 #include "overlap_tcl.hpp"
+#include "harmonic_dumbbell_tcl.hpp"
 #include "harmonic_tcl.hpp"
 #include "quartic_tcl.hpp"
 #include "bonded_coulomb_tcl.hpp"
 #include "subt_lj_tcl.hpp"
-#include "tcl/object-in-fluid/area_force_local_tcl.hpp"
-#include "tcl/object-in-fluid/area_force_global_tcl.hpp"
-#include "tcl/object-in-fluid/volume_force_tcl.hpp"
-#include "tcl/object-in-fluid/stretching_force_tcl.hpp"
-#include "tcl/object-in-fluid/stretchlin_force_tcl.hpp"
-#include "tcl/object-in-fluid/bending_force_tcl.hpp"
+#include "umbrella_tcl.hpp"
+#include "tcl/object-in-fluid/oif_global_forces_tcl.hpp"
+#include "tcl/object-in-fluid/oif_local_forces_tcl.hpp"
+#include "tcl/object-in-fluid/out_direction_tcl.hpp"
+#ifdef TWIST_STACK
+#include "twist_stack_tcl.hpp"
+#endif
+#ifdef HYDROGEN_BOND
+#include "hydrogen_bond_tcl.hpp"
+#endif
 #include "immersed_boundary/ibm_triel_tcl.hpp"
 #include "immersed_boundary/ibm_volume_conservation_tcl.hpp"
 #include "immersed_boundary/ibm_tribend_tcl.hpp"
-
 
 #ifdef DIPOLES
 int tclprint_to_result_DipolarIA(Tcl_Interp *interp);
@@ -289,10 +298,13 @@ int tclcommand_inter_parse_magnetic(Tcl_Interp * interp, int argc, char ** argv)
   REGISTER_DIPOLAR("dawaanr", tclcommand_inter_magnetic_parse_dawaanr);
 
   REGISTER_DIPOLAR("mdds", tclcommand_inter_magnetic_parse_mdds);
-
+  
+#ifdef DIPOLAR_DIRECT_SUM
+  REGISTER_DIPOLAR("dds-gpu", tclcommand_inter_magnetic_parse_dds_gpu);
+#endif
 
   /* fallback */
-  coulomb.Dmethod  = DIPOLAR_NONE;
+  set_dipolar_method_local(DIPOLAR_NONE);
   coulomb.Dbjerrum = 0.0;
 
   mpi_bcast_coulomb_params();
@@ -320,21 +332,15 @@ int tclprint_to_result_BondedIA(Tcl_Interp *interp, int i)
   switch (params->type) {
   case BONDED_IA_FENE:
     return tclprint_to_result_feneIA(interp, params);
-  case BONDED_IA_STRETCHING_FORCE:						
-    return tclprint_to_result_stretchingforceIA(interp, params);
-  case BONDED_IA_STRETCHLIN_FORCE:						
-    return tclprint_to_result_stretchlinforceIA(interp, params);
-  case BONDED_IA_AREA_FORCE_LOCAL:					
-	return tclprint_to_result_areaforcelocalIA(interp, params);
-  case BONDED_IA_BENDING_FORCE:						
-	return tclprint_to_result_bendingforceIA(interp, params);
-#ifdef AREA_FORCE_GLOBAL
-  case BONDED_IA_AREA_FORCE_GLOBAL:						
-	return tclprint_to_result_areaforceglobalIA(interp, params);
+  case BONDED_IA_OIF_LOCAL_FORCES:
+	return tclprint_to_result_oiflocalforcesIA(interp, params);
+#ifdef MEMBRANE_COLLISION
+  case BONDED_IA_OIF_OUT_DIRECTION:
+    return tclprint_to_result_oifoutdirectionIA(interp, params);
 #endif
-#ifdef VOLUME_FORCE
-  case BONDED_IA_VOLUME_FORCE:						
-	return tclprint_to_result_volumeforceIA(interp, params);
+#ifdef OIF_GLOBAL_FORCES
+  case BONDED_IA_OIF_GLOBAL_FORCES:						
+	return tclprint_to_result_oifglobalforcesIA(interp, params);
 #endif
       
 #ifdef IMMERSED_BOUNDARY
@@ -347,6 +353,10 @@ int tclprint_to_result_BondedIA(Tcl_Interp *interp, int i)
       
 #endif
       
+#ifdef ROTATION
+  case BONDED_IA_HARMONIC_DUMBBELL:
+    return tclprint_to_result_harmonic_dumbbellIA(interp, params);
+#endif
   case BONDED_IA_HARMONIC:
     return tclprint_to_result_harmonicIA(interp, params);
   case BONDED_IA_QUARTIC:
@@ -384,6 +394,10 @@ int tclprint_to_result_BondedIA(Tcl_Interp *interp, int i)
 #ifdef OVERLAPPED
   case BONDED_IA_OVERLAPPED:
     return tclprint_to_result_overlapIA(interp, params);
+#endif
+#ifdef UMBRELLA
+  case BONDED_IA_UMBRELLA:
+    return tclprint_to_result_umbrellaIA(interp, params);
 #endif
 #ifdef BOND_CONSTRAINT
   case BONDED_IA_RIGID_BOND:
@@ -471,12 +485,24 @@ int tclprint_to_result_NonbondedIA(Tcl_Interp *interp, int i, int j)
   if (data->soft_cut > 0.0) tclprint_to_result_softIA(interp,i,j);
 #endif
 
+#ifdef AFFINITY
+  if (data->affinity_cut > 0.0) tclprint_to_result_affinityIA(interp,i,j);
+#endif
+    
+#ifdef MEMBRANE_COLLISION
+    if (data->membrane_cut > 0.0) tclprint_to_result_membraneIA(interp,i,j);
+#endif
+
 #ifdef HAT
   if (data->HAT_r > 0.0) tclprint_to_result_hatIA(interp,i,j);
 #endif
 
 #ifdef LJCOS2
   if (data->LJCOS2_cut > 0.0) tclprint_to_result_ljcos2IA(interp,i,j);
+#endif
+
+#ifdef COS2
+  if (data->COS2_cut > 0.0) tclprint_to_result_cos2IA(interp,i,j);
 #endif
 
 #ifdef GAY_BERNE
@@ -584,6 +610,9 @@ int tclprint_to_result_DipolarIA(Tcl_Interp *interp)
     break;
   case DIPOLAR_ALL_WITH_ALL_AND_NO_REPLICA: tclprint_to_result_DAWAANR(interp); break;
   case DIPOLAR_DS: tclprint_to_result_Magnetic_dipolar_direct_sum_(interp); break;
+#ifdef DIPOLAR_DIRECT_SUM
+  case DIPOLAR_DS_GPU: tclprint_to_result_dds_gpu(interp); break;
+#endif
   default: break;
   }
   Tcl_AppendResult(interp, "}",(char *) NULL);
@@ -789,6 +818,14 @@ int tclcommand_inter_parse_non_bonded(Tcl_Interp * interp,
     REGISTER_NONBONDED("soft-sphere", tclcommand_inter_parse_soft);
 #endif
 
+#ifdef AFFINITY
+    REGISTER_NONBONDED("affinity", tclcommand_inter_parse_affinity);
+#endif
+      
+#ifdef MEMBRANE_COLLISION
+    REGISTER_NONBONDED("membrane", tclcommand_inter_parse_membrane);
+#endif
+
 #ifdef HAT
     REGISTER_NONBONDED("hat", tclcommand_inter_parse_hat);
 #endif
@@ -800,6 +837,11 @@ int tclcommand_inter_parse_non_bonded(Tcl_Interp * interp,
 #ifdef LJCOS2
     REGISTER_NONBONDED("lj-cos2", tclcommand_inter_parse_ljcos2);
 #endif
+
+#ifdef COS2
+    REGISTER_NONBONDED("cos2", tclcommand_inter_parse_cos2);
+#endif
+
 
 #ifdef COMFIXED
     REGISTER_NONBONDED("comfixed", tclcommand_inter_parse_comfixed);
@@ -935,15 +977,12 @@ int tclcommand_inter_parse_bonded(Tcl_Interp *interp,
   if (ARG0_IS_S(name)) return parser(interp, bond_type, argc, argv);
   
   REGISTER_BONDED("fene", tclcommand_inter_parse_fene);
-  REGISTER_BONDED("stretching_force", tclcommand_inter_parse_stretching_force);
-  REGISTER_BONDED("stretchlin_force", tclcommand_inter_parse_stretchlin_force);
-  REGISTER_BONDED("area_force_local", tclcommand_inter_parse_area_force_local);
-  REGISTER_BONDED("bending_force", tclcommand_inter_parse_bending_force);
-#ifdef AREA_FORCE_GLOBAL
-  REGISTER_BONDED("area_force_global", tclcommand_inter_parse_area_force_global);
+  REGISTER_BONDED("oif_local_forces", tclcommand_inter_parse_oif_local_forces);
+#ifdef OIF_GLOBAL_FORCES
+  REGISTER_BONDED("oif_global_forces", tclcommand_inter_parse_oif_global_forces);
 #endif
-#ifdef VOLUME_FORCE
-  REGISTER_BONDED("volume_force", tclcommand_inter_parse_volume_force);
+#ifdef MEMBRANE_COLLISION
+  REGISTER_BONDED("oif_out_direction", tclcommand_inter_parse_oif_out_direction);
 #endif
   // IMMERSED_BOUNDARY
 #ifdef IMMERSED_BOUNDARY
@@ -953,6 +992,9 @@ int tclcommand_inter_parse_bonded(Tcl_Interp *interp,
 #endif
   
   REGISTER_BONDED("harmonic", tclcommand_inter_parse_harmonic);
+#ifdef ROTATION
+  REGISTER_BONDED("harmonic_dumbbell", tclcommand_inter_parse_harmonic_dumbbell);
+#endif
   REGISTER_BONDED("quartic", tclcommand_inter_parse_quartic);
 #ifdef ELECTROSTATICS
   REGISTER_BONDED("bonded_coulomb", tclcommand_inter_parse_bonded_coulomb);  
@@ -981,11 +1023,20 @@ int tclcommand_inter_parse_bonded(Tcl_Interp *interp,
 #ifdef OVERLAPPED
   REGISTER_BONDED("overlapped", tclcommand_inter_parse_overlapped_bonded);
 #endif
+#ifdef UMBRELLA
+  REGISTER_BONDED("umbrella", tclcommand_inter_parse_umbrella);
+#endif
 #ifdef BOND_CONSTRAINT
   REGISTER_BONDED("rigid_bond", tclcommand_inter_parse_rigid_bond);
 #endif
 #ifdef BOND_VIRTUAL
   REGISTER_BONDED("virtual_bond", tclcommand_inter_parse_virtual_bonds);
+#endif
+#ifdef HYDROGEN_BOND
+  REGISTER_BONDED("hydrogen_bond", tclcommand_inter_parse_hydrogen_bond);
+#endif
+#ifdef TWIST_STACK
+  REGISTER_BONDED("twist_stack", tclcommand_inter_parse_twist_stack);  
 #endif
   Tcl_AppendResult(interp, "unknown bonded interaction type \"", argv[0],
 		   "\"", (char *) NULL);

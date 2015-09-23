@@ -85,7 +85,7 @@ inline void calc_dihedral_angle(Particle *p1, Particle *p2, Particle *p3, Partic
 */
 inline int calc_dihedral_force(Particle *p2, Particle *p1, Particle *p3, Particle *p4,
 				 Bonded_ia_parameters *iaparams, double force2[3],
-				 double force1[2], double force3[2])
+				 double force1[3], double force3[3])
 {
   int i;
   /* vectors for dihedral angle calculation */
@@ -138,6 +138,30 @@ inline int calc_dihedral_force(Particle *p2, Particle *p1, Particle *p3, Particl
     sinmphi_sinphi = sin(iaparams->p.dihedral.mult*phi)/sin(phi);
 #else
     sinmphi_sinphi = sin(iaparams->p.dihedral.mult*phi - iaparams->p.dihedral.phase)/sin(phi);
+
+#ifdef CONFIGTEMP
+  extern double configtemp[2];
+  double a[3], b[3], c[3], aXb[3], bXc[3];
+  get_mi_vector(a, p2->r.p, p1->r.p);
+  get_mi_vector(b, p3->r.p, p2->r.p);
+  get_mi_vector(c, p4->r.p, p3->r.p);
+  vector_product(a, b, aXb);
+  vector_product(b, c, bXc);
+  if (p1->p.configtemp) {
+    configtemp[0] += SQR(fac*sinmphi_sinphi*sin(phi))*sqrlen(b)/sqrlen(aXb);
+    configtemp[1] -= iaparams->p.dihedral.bend * (SQR(iaparams->p.dihedral.mult) *
+      cos(iaparams->p.dihedral.mult*phi - iaparams->p.dihedral.phase) 
+      - iaparams->p.dihedral.mult * sinmphi_sinphi*cosphi)*sqrlen(b)/sqrlen(aXb);
+  }
+  if (p4->p.configtemp) {
+    configtemp[0] += SQR(fac*sinmphi_sinphi*sin(phi))*sqrlen(b)/sqrlen(bXc);
+    configtemp[1] -= iaparams->p.dihedral.bend * (SQR(iaparams->p.dihedral.mult) *
+      cos(iaparams->p.dihedral.mult*phi - iaparams->p.dihedral.phase) 
+      - iaparams->p.dihedral.mult * sinmphi_sinphi*cosphi)*sqrlen(b)/sqrlen(bXc);
+  }
+#endif
+
+
 #endif
   }
 

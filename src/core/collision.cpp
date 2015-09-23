@@ -44,7 +44,7 @@ typedef struct {
 // During force calculation, colliding particles are recorded in thequeue
 // The queue is processed after force calculation, when it is save to add
 // particles
-static collision_struct *collision_queue;
+static collision_struct *collision_queue = 0;
 // Number of collisions recoreded in the queue
 static int number_of_collisions;
 
@@ -192,7 +192,7 @@ void detect_collision(Particle* p1, Particle* p2)
     number_of_collisions++;
 
     // Allocate mem for the new collision info
-    collision_queue = (collision_struct *) realloc (collision_queue, (number_of_collisions) * sizeof(collision_struct));
+    collision_queue = (collision_struct *) Utils::realloc (collision_queue, (number_of_collisions) * sizeof(collision_struct));
       
     // Save the collision      
     collision_queue[number_of_collisions-1].pp1 = part1;
@@ -208,7 +208,7 @@ void prepare_collision_queue()
   
   number_of_collisions=0;
 
-  collision_queue = (collision_struct *) malloc (sizeof(collision_struct));
+  collision_queue = (collision_struct *) Utils::malloc (sizeof(collision_struct));
 
 }
 
@@ -280,8 +280,11 @@ void handle_collisions ()
   }
 
   // Reset the collision queue
-  number_of_collisions = 0;
-  free(collision_queue);
+  if(collision_queue && (number_of_collisions > 0)) {
+    free(collision_queue);
+    collision_queue = 0;
+    number_of_collisions = 0;
+  }
 
   announce_resort_particles();
 }

@@ -31,7 +31,7 @@ void external_potential_pre_init() {
 
 
 int generate_external_potential(ExternalPotential** e) {
-  external_potentials = (ExternalPotential*) realloc(external_potentials,
+  external_potentials = (ExternalPotential*) Utils::realloc(external_potentials,
 		  (n_external_potentials+1) * sizeof(ExternalPotential));
   *e = &external_potentials[n_external_potentials];
   n_external_potentials++;
@@ -49,7 +49,7 @@ int external_potential_tabulated_init(int number, char* filename, int n_particle
     return ES_ERROR;
   strcpy((char*)&(e->filename), filename);
   external_potentials[number].type=EXTERNAL_POTENTIAL_TYPE_TABULATED;
-  external_potentials[number].scale = (double*) malloc(n_particle_types*sizeof(double));
+  external_potentials[number].scale = (double*) Utils::malloc(n_particle_types*sizeof(double));
   external_potentials[number].n_particle_types = n_particle_types;
   for (int i = 0; i < n_particle_types; i++) {
     external_potentials[number].scale[i]=scale[i];
@@ -154,14 +154,7 @@ int lattice_read_file(GlobalLattice* lattice, char* filename) {
   res[0] = box_l[0]/bins[0];
   res[1] = box_l[1]/bins[1];
   res[2] = box_l[2]/bins[2];
-  /*
-  if (res[0] > 0)
-    if (skin/res[0]>halosize) halosize = (int)ceil(skin/res[0]);
-  if (res[1] > 0)
-    if (skin/res[1]>halosize) halosize = (int)ceil(skin/res[1]);
-  if (res[2] > 0)
-    if (skin/res[2]>halosize) halosize = (int)ceil(skin/res[2]);
-  */
+
   // Now we count how many entries we have:
   int halosize=1;
 
@@ -174,8 +167,6 @@ int lattice_read_file(GlobalLattice* lattice, char* filename) {
   int i;
   int cnt = 0;
   while (fgets(line, 200, infile)) {
-//    if (strlen(line)<2)
-//      continue;
     token = strtok(line, "\t");
     for (i=0; i<dim;i++) {
       if (!token) { fprintf(stderr, "Could not read f[%d]  index %d %d %d  token %s  got %s\n", i, ind[0], ind[1], ind[2], token, line); return ES_ERROR; }
@@ -214,8 +205,8 @@ void add_external_potential_tabulated_forces(ExternalPotential* e, Particle* p) 
   double field[3];
   double ppos[3];
   int    img[3];
-  memcpy(ppos, p->r.p, 3*sizeof(double));
-  memcpy(img, p->l.i, 3*sizeof(int));
+  memmove(ppos, p->r.p, 3*sizeof(double));
+  memmove(img, p->l.i, 3*sizeof(int));
   fold_position(ppos, img);
   e->tabulated.potential.interpolate_gradient(ppos, field);
   p->f.f[0]-=e->scale[p->p.type]*field[0];
@@ -247,8 +238,8 @@ void add_external_potential_tabulated_energy(ExternalPotential* e, Particle* p) 
   double potential;
   double ppos[3];
   int img[3];
-  memcpy(ppos, p->r.p, 3*sizeof(double));
-  memcpy(img, p->l.i, 3*sizeof(int));
+  memmove(ppos, p->r.p, 3*sizeof(double));
+  memmove(img, p->l.i, 3*sizeof(int));
   fold_position(ppos, img);
  
   e->tabulated.potential.interpolate(ppos, &potential);

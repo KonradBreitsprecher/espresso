@@ -46,11 +46,15 @@
 #include "gaussian.hpp"
 #include "buckingham.hpp"
 #include "soft_sphere.hpp"
+#include "object-in-fluid/affinity.hpp"
+#include "object-in-fluid/membrane_collision.hpp"
 #include "hat.hpp"
+#include "umbrella.hpp"
 #include "tab.hpp"
 #include "overlap.hpp"
 #include "ljcos.hpp"
 #include "ljcos2.hpp"
+#include "cos2.hpp"
 #include "gb.hpp"
 #include "cells.hpp"
 #include "comforce.hpp"
@@ -61,6 +65,8 @@
 #include "magnetic_non_p3m_methods.hpp"
 #include "mdlc_correction.hpp"
 #include "initialize.hpp"
+#include "interaction_data.hpp"
+#include "actor/DipolarDirectSum.hpp"
 
 /****************************************
  * variables
@@ -237,6 +243,23 @@ void initialize_ia_params(IA_parameters *params) {
   params->soft_cut = INACTIVE_CUTOFF;
 #endif
 
+#ifdef AFFINITY
+  params->affinity_type = 
+  params->affinity_kappa = 
+  params->affinity_r0 =
+  params->affinity_Kon =
+  params->affinity_Koff =
+  params->affinity_maxBond =
+  params->affinity_cut = INACTIVE_CUTOFF;
+#endif
+    
+#ifdef MEMBRANE_COLLISION
+    params->membrane_a =
+    params->membrane_n =
+    params->membrane_offset = 0.0;
+    params->membrane_cut = INACTIVE_CUTOFF;
+#endif
+
 #ifdef HAT
   params->HAT_Fmax =
     params->HAT_r = 0.0;
@@ -260,6 +283,13 @@ void initialize_ia_params(IA_parameters *params) {
     params->LJCOS2_rchange = 
     params->LJCOS2_capradius = 0.0;
   params->LJCOS2_cut = INACTIVE_CUTOFF;
+#endif
+
+#ifdef COS2
+  params->COS2_eps =
+    params->COS2_offset =
+    params->COS2_w =
+  params->COS2_cut = INACTIVE_CUTOFF;
 #endif
 
 #ifdef GAY_BERNE
@@ -336,7 +366,7 @@ void initialize_ia_params(IA_parameters *params) {
 
 /** Copy interaction parameters. */
 void copy_ia_params(IA_parameters *dst, IA_parameters *src) {
-  memcpy(dst, src, sizeof(IA_parameters));
+  memmove(dst, src, sizeof(IA_parameters));
 }
 
 IA_parameters *get_ia_param_safe(int i, int j) {
@@ -588,6 +618,16 @@ static void recalc_maximal_cutoff_nonbonded()
 	max_cut_current = data->soft_cut;
 #endif
 
+#ifdef AFFINITY
+      if (max_cut_current < data->affinity_cut)
+	max_cut_current = data->affinity_cut;
+#endif
+        
+#ifdef MEMBRANE_COLLISION
+      if (max_cut_current < data->membrane_cut)
+    max_cut_current = data->membrane_cut;
+#endif
+
 #ifdef HAT
       if (max_cut_current < data->HAT_r)
 	max_cut_current = data->HAT_r;
@@ -606,6 +646,14 @@ static void recalc_maximal_cutoff_nonbonded()
 	double max_cut_tmp = data->LJCOS2_cut + data->LJCOS2_offset;
 	if (max_cut_current < max_cut_tmp)
 	  max_cut_current = max_cut_tmp;
+      }
+#endif
+
+#ifdef COS2
+      {
+  double max_cut_tmp = data->COS2_cut + data->COS2_offset;
+  if (max_cut_current < max_cut_tmp)
+    max_cut_current = max_cut_tmp;
       }
 #endif
 
@@ -690,6 +738,10 @@ const char *get_name_of_bonded_ia(BondedInteraction type) {
     return "dihedral";
   case BONDED_IA_ENDANGLEDIST:
     return "endangledist";
+#ifdef ROTATION
+  case BONDED_IA_HARMONIC_DUMBBELL:
+    return "HARMONIC_DUMBBELL";
+#endif
   case BONDED_IA_HARMONIC:
     return "HARMONIC";    
   case BONDED_IA_QUARTIC:
@@ -700,31 +752,31 @@ const char *get_name_of_bonded_ia(BondedInteraction type) {
     return "SUBT_LJ";
   case BONDED_IA_TABULATED:
     return "tabulated";
+  case BONDED_IA_UMBRELLA:
+    return "umbrella";
   case BONDED_IA_OVERLAPPED:
     return "overlapped";
   case BONDED_IA_RIGID_BOND:
     return "RIGID_BOND";
   case BONDED_IA_VIRTUAL_BOND:
     return "VIRTUAL_BOND";
-  case BONDED_IA_STRETCHING_FORCE:
-    return "STRETCHING_FORCE";
-  case BONDED_IA_AREA_FORCE_LOCAL:
-    return "AREA_FORCE_LOCAL";
-  case BONDED_IA_AREA_FORCE_GLOBAL:
-    return "AREA_FORCE_GLOBAL";
-  case BONDED_IA_BENDING_FORCE:
-    return "BENDING_FORCE";
-  case BONDED_IA_VOLUME_FORCE:
-    return "VOLUME_FORCE";
-  case BONDED_IA_STRETCHLIN_FORCE:
-    return "STRETCHLIN_FORCE";
+  case BONDED_IA_OIF_GLOBAL_FORCES:
+    return "OIF_GLOBAL_FORCES";
+  case BONDED_IA_OIF_LOCAL_FORCES:
+    return "OIF_LOCAL_FORCES";
+  case BONDED_IA_OIF_OUT_DIRECTION:
+    return "oif_out_direction";
+  case BONDED_IA_CG_DNA_BASEPAIR:
+    return "CG_DNA_BASEPAIR";
+  case BONDED_IA_CG_DNA_STACKING:
+    return "CG_DNA_STACKING";
   case BONDED_IA_IBM_TRIEL:
     return "IBM_TRIEL";
   case BONDED_IA_IBM_VOLUME_CONSERVATION:
     return "IBM_VOLUME_CONSERVATION";
   case BONDED_IA_IBM_TRIBEND:
     return "IBM_TRIBEND";
-      
+
   default:
     fprintf(stderr, "%d: INTERNAL ERROR: name of unknown interaction %d requested\n",
         this_node, type);
@@ -746,7 +798,7 @@ void realloc_ia_params(int nsize)
   if (nsize <= n_particle_types)
     return;
 
-  new_params = (IA_parameters *) malloc(nsize*nsize*sizeof(IA_parameters));
+  new_params = (IA_parameters *) Utils::malloc(nsize*nsize*sizeof(IA_parameters));
   if (ia_params) {
     /* if there is an old field, copy entries and delete */
     for (i = 0; i < nsize; i++)
@@ -801,7 +853,7 @@ void make_bond_type_exist(int type)
     return;
   }
   /* else allocate new memory */
-  bonded_ia_params = (Bonded_ia_parameters *)realloc(bonded_ia_params,
+  bonded_ia_params = (Bonded_ia_parameters *)Utils::realloc(bonded_ia_params,
 						     ns*sizeof(Bonded_ia_parameters));
   /* set bond types not used as undefined */
   for (i = n_bonded_ia; i < ns; i++)
@@ -844,6 +896,19 @@ int interactions_sanity_checks()
   return state;
 }
 
+
+#ifdef DIPOLES
+void set_dipolar_method_local(DipolarInteraction method)
+{
+#ifdef DIPOLAR_DIRECT_SUM
+if ((coulomb.Dmethod == DIPOLAR_DS_GPU) && (method != DIPOLAR_DS_GPU))
+{
+ deactivate_dipolar_direct_sum_gpu();
+}
+#endif
+coulomb.Dmethod = method;
+}
+#endif
 
 #ifdef ELECTROSTATICS
 
@@ -921,7 +986,7 @@ int dipolar_set_Dbjerrum(double bjerrum)
     }
  
     mpi_bcast_coulomb_params();
-    coulomb.Dmethod = DIPOLAR_NONE;
+    set_dipolar_method_local(DIPOLAR_NONE);
     mpi_bcast_coulomb_params();
 
   }

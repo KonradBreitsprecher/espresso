@@ -24,14 +24,13 @@
 /*
 #include "utils.hpp"
 #include "integrate.hpp"
-#include "object-in-fluid/stretching_force.hpp"
-#include "object-in-fluid/stretchlin_force.hpp"
-#include "object-in-fluid/area_force_local.hpp"
-#include "object-in-fluid/area_force_global.hpp"
-#include "object-in-fluid/bending_force.hpp"
-#include "object-in-fluid/volume_force.hpp"
+
+#include "object-in-fluid/oif_local_forces.hpp"
+#include "object-in-fluid/oif_global_forces.hpp"
+#include "object-in-fluid/out_direction.hpp"
 #include "dihedral.hpp"
 #include "mdlc_correction.hpp"
+#include "hydrogen_bond.hpp"
 */
 #ifndef _ENERGY_H
 #define _ENERGY_H
@@ -63,8 +62,10 @@ void master_energy_calc();
     @param result non-zero only on master node; will contain the cumulative over all nodes. */
 void energy_calc(double *result);
 
+
 /** Calculate long range energies (P3M, MMM2d...). */
 void calc_long_range_energies();
+
 
 /*@}*/
 

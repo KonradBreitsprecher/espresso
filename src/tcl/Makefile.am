@@ -30,6 +30,8 @@ libEspressoTcl_la_SOURCES = \
 	bin_tcl.cpp \
 	binary_file_tcl.cpp binary_file_tcl.hpp \
 	blockfile_tcl.cpp \
+	h5mdfile_tcl.cpp h5mdfile_tcl.hpp \
+	rotate_system_tcl.cpp rotate_system_tcl.hpp \
 	readpdb_tcl.cpp \
 	capacitor_tcl.cpp capacitor_tcl.hpp \
 	cells_tcl.cpp \
@@ -78,12 +80,16 @@ libEspressoTcl_la_SOURCES = \
 	uwerr_tcl.cpp \
 	virtual_sites_com_tcl.cpp virtual_sites_com_tcl.hpp \
 	ghmc_tcl.cpp ghmc_tcl.hpp \
-	minimize_energy_tcl.cpp minimize_energy_tcl.hpp
+	twist_stack_tcl.hpp twist_stack_tcl.cpp \
+	hydrogen_bond_tcl.hpp hydrogen_bond_tcl.cpp \
+	minimize_energy_tcl.cpp minimize_energy_tcl.hpp \
+	integrate_sd_tcl.cpp integrate_sd_tcl.hpp
 
 # nonbonded potentials and forces
 libEspressoTcl_la_SOURCES += \
 	bmhtf-nacl_tcl.cpp bmhtf-nacl_tcl.hpp \
 	buckingham_tcl.cpp buckingham_tcl.hpp \
+	cos2_tcl.cpp cos2_tcl.hpp \
 	dpd_tcl.cpp dpd_tcl.hpp \
 	forcecap_tcl.cpp forcecap_tcl.hpp \
 	gaussian_tcl.cpp gaussian_tcl.hpp \
@@ -97,6 +103,9 @@ libEspressoTcl_la_SOURCES += \
 	ljgen_tcl.cpp ljgen_tcl.hpp \
 	morse_tcl.cpp morse_tcl.hpp \
 	soft_sphere_tcl.cpp soft_sphere_tcl.hpp \
+	object-in-fluid/affinity_tcl.cpp \
+	object-in-fluid/affinity_tcl.hpp \
+	object-in-fluid/membrane_collision_tcl.cpp object-in-fluid/membrane_collision_tcl.hpp \
 	steppot_tcl.cpp steppot_tcl.hpp \
 	tab_tcl.cpp tab_tcl.hpp \
 	tunable_slip_tcl.cpp tunable_slip_tcl.hpp
@@ -111,23 +120,19 @@ libEspressoTcl_la_SOURCES += \
 	dihedral_tcl.cpp dihedral_tcl.hpp \
 	endangledist_tcl.cpp endangledist_tcl.hpp \
 	fene_tcl.cpp fene_tcl.hpp \
+	harmonic_dumbbell_tcl.cpp harmonic_dumbbell_tcl.hpp \
 	harmonic_tcl.cpp harmonic_tcl.hpp \
 	quartic_tcl.cpp quartic_tcl.hpp \
 	bonded_coulomb_tcl.cpp bonded_coulomb_tcl.hpp \
 	overlap_tcl.cpp overlap_tcl.hpp \
 	subt_lj_tcl.cpp subt_lj_tcl.hpp \
-	object-in-fluid/area_force_local_tcl.cpp \
-	object-in-fluid/area_force_local_tcl.hpp \
-	object-in-fluid/area_force_global_tcl.cpp \
-	object-in-fluid/area_force_global_tcl.hpp \
-	object-in-fluid/bending_force_tcl.cpp \
-	object-in-fluid/bending_force_tcl.hpp \
-	object-in-fluid/stretching_force_tcl.cpp \
-	object-in-fluid/stretching_force_tcl.hpp \
-	object-in-fluid/stretchlin_force_tcl.cpp \
-	object-in-fluid/stretchlin_force_tcl.hpp \
-	object-in-fluid/volume_force_tcl.cpp \
-	object-in-fluid/volume_force_tcl.hpp \
+	umbrella_tcl.cpp umbrella_tcl.hpp \
+	object-in-fluid/oif_global_forces_tcl.cpp \
+	object-in-fluid/oif_global_forces_tcl.hpp \
+	object-in-fluid/oif_local_forces_tcl.cpp \
+	object-in-fluid/oif_local_forces_tcl.hpp \
+	object-in-fluid/out_direction_tcl.cpp \
+	object-in-fluid/out_direction_tcl.hpp \
 	immersed_boundary/ibm_triel_tcl.cpp \
 	immersed_boundary/ibm_triel_tcl.hpp \
 	immersed_boundary/ibm_volume_conservation_tcl.cpp \
@@ -152,7 +157,9 @@ libEspressoTcl_la_SOURCES += \
 libEspressoTcl_la_SOURCES += \
 	actor/Mmm1dgpu_tcl.cpp actor/Mmm1dgpu_tcl.hpp \
 	actor/Ewaldgpu_tcl.cpp actor/Ewaldgpu_tcl.hpp \
-	actor/HarmonicWell_tcl.cpp actor/HarmonicWell_tcl.hpp
+	actor/DipolarDirectSum_tcl.cpp actor/DipolarDirectSum_tcl.hpp \
+	actor/HarmonicWell_tcl.cpp actor/HarmonicWell_tcl.hpp \
+	actor/HarmonicOrientationWell_tcl.cpp actor/HarmonicOrientationWell_tcl.hpp
 
 if CUDA
 libEspressoTcl_la_SOURCES += cuda_init_tcl.cpp

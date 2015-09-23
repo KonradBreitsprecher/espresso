@@ -30,6 +30,7 @@ ESSCRIPTS = \
 	dielectrics.tcl \
 	gibbs_ghmc.tcl \
 	meshConstraint.tcl \
+	h5md.tcl \
 	object_in_fluid.tcl \
 	parallel_tempering.tcl \
 	pdb.tcl \

@@ -26,15 +26,12 @@
  *  For more information see topology.hpp
  *   */
 
-//#include "utils.hpp"
 #include "parser.hpp"
 #include "topology.hpp"
 #include "statistics_chain_tcl.hpp"
 #include "particle_data.hpp"
-//#include "cells.hpp"
 #include "communication.hpp"
-//#include "molforces.hpp"
-#include "tcl/topology_tcl.hpp"
+#include "topology_tcl.hpp"
 
 int tclcommand_analyze_set_print_all(Tcl_Interp *interp)
 {
@@ -68,7 +65,7 @@ int tclcommand_analyze_parse_generic_structure(Tcl_Interp *interp, int argc, cha
     }
     topology[arg].type = il.e[0];
     realloc_intlist(&topology[arg].part, topology[arg].part.n = il.n - 1);
-    memcpy(topology[arg].part.e, &il.e[1], (il.n - 1)*sizeof(int));
+    memmove(topology[arg].part.e, &il.e[1], (il.n - 1)*sizeof(int));
   }
   realloc_intlist(&il, 0);
   
