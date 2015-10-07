@@ -48,6 +48,7 @@
 #include "forces.hpp"
 #include "config.hpp"
 #include "global.hpp"
+#include "p3m_gpu.hpp"
 
 #ifdef ELECTROSTATICS
 
@@ -242,7 +243,7 @@ int iccp3m_iteration() {
 	} /* iteration */
 	on_particle_change();
 	
-	//fprintf(stderr, "ICC finished %d\n",iccp3m_cfg.citeration);
+	fprintf(stderr, "ICC finished %d\n",iccp3m_cfg.citeration);
 
 	return iccp3m_cfg.citeration;
 }
@@ -576,6 +577,7 @@ void calc_long_range_forces_iccp3m()
 #ifdef ELECTROSTATICS
 	/* calculate k-space part of electrostatic interaction. */
 	if (!(coulomb.method == COULOMB_ELC_P3M ||
+			coulomb.method == COULOMB_P3M_GPU ||
 			coulomb.method == COULOMB_P3M     ||
 			coulomb.method == COULOMB_MMM2D   ||
             coulomb.method == COULOMB_MMM1D)  ) {
@@ -596,6 +598,14 @@ void calc_long_range_forces_iccp3m()
 		ELC_add_force();
 		break;
 
+#ifdef CUDA
+	case COULOMB_P3M_GPU:
+		if (this_node == 0) {
+		  FORCE_TRACE(printf("Computing GPU P3M forces.\n"));
+		  p3m_gpu_add_farfield_force();
+		} 
+		break;
+#endif
 	case COULOMB_P3M:
 		p3m_charge_assign();
 		p3m_calc_kspace_forces(1,0);

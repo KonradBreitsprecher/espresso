@@ -56,7 +56,7 @@ part 3 pos 16 5 5 q -1 v 0 0 0
 
 if { [catch {
 
-    inter coulomb 1.0 p3m gpu 0.0 64 5 1.0
+	inter coulomb 1.0 p3m gpu 0.0 64 5 1.0
     integrate 0
 
     puts [ part 0 print f ]
