@@ -37,8 +37,8 @@ class capacitor
 		double getNeighbourSum(double* data, int* G);
 		double interpolatePotOnWorldPoint(double* data, double wP[3]);
 		std::vector<electrode> _electrodes;
-		double _box[3], _pref[3],_surface_prec,_convergence,_binVolume,_eps_0;
-		int _bins[3],_num_iter;
+		double _box[3], _pref[3], _surface_prec, _convergence, _binVolume, _eps_0, _gl_pref;
+		int _bins[3], _num_iter;
 };
 
 int setup_capacitor(std::vector<std::string> geofiles, std::vector<double> potentials, std::vector<int> bins,double surface_prec, int num_iter, double convergence, double eps_0, std::string ext_pot_path);

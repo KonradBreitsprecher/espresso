@@ -1,4 +1,3 @@
-
 proc meshToParticles {path_to_mesh first_index ptype} {
 	global mesh_normals mesh_areas
 
@@ -66,6 +65,7 @@ proc mesh_capacitor_icc {firstIndex list_pathToMesh list_potentials list_types b
 
 	set num_particles [ list ]
 	set i $firstIndex
+	set qa 1
 	foreach pathToMesh $list_pathToMesh type $list_types {
 		lappend num_particles [meshToParticles $pathToMesh $i $type] 
 		foreach m $mesh_areas n $mesh_normals {
@@ -74,8 +74,8 @@ proc mesh_capacitor_icc {firstIndex list_pathToMesh list_potentials list_types b
 			lappend icc_sigmas $icc_sigma
 			lappend icc_epsilons $icc_eps
 			
-			if {[t_random] > 0.5} { set pm 1.0 } else { set pm -1.0}
-			part $i q [expr $pm*(0.001 + 0.001*[t_random])]
+			set qa [expr -$qa]
+			part $i q [expr $qa*(0.00005 + 0.00005*[t_random])]
 			incr i
 		}
 	}

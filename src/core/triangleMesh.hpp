@@ -24,6 +24,7 @@
 #include <string>
 #include <iterator>
 #include <vector>
+#include <iostream>
 #include "utils.hpp"
 
 typedef struct
@@ -48,6 +49,7 @@ class triangleMesh
         triangleMesh(std::string pathToMeshfile);
 		~triangleMesh();
 		double sqrDistToMesh(double P[3]);
+		bool isInside(double P[3]);
         triangle* _triangles;
         long _numFaces;
     	//static int triangleMesh_to_distanceMapLatticeFile(Constraint_mesh *c, char* filename);
@@ -61,7 +63,7 @@ class triangleMesh
 		double sqrDistToEdge(double A[3],double a[3], double P[3]);
 		double sqrDistToFeatureOfFaceIndex(double P[3], int faceIndex, int feature);	
 		double sqrDistToTriangle(int i, double P[3], int *minDistFeature);
-		void minVectorToMesh(double P[3], double res[3]);
+		void minVectorToMesh(double P[3], double res[3], int *minDistFaceIndex);
 };
 
 #endif // TRIANGLEMESH_H

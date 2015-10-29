@@ -45,12 +45,16 @@ capacitor::capacitor(std::vector<std::string> geofiles, std::vector<double> pote
 	_convergence = convergence;
 	_eps_0 = eps_0;
 
-	_pref[0] = 1.0/6.0;
-	_pref[1] = 1.0/6.0;
-	_pref[2] = 1.0/6.0;
-    
+    double reso[] = {pow(_box[0] / _bins[0],2),pow(_box[1] / _bins[1],2),pow(_box[2] / _bins[2],2)};
+    //double reso[] = {pow(1.0/_bins[0],2),pow(1.0/_bins[1],2),pow(1.0/_bins[2],2)};
+	_gl_pref = 0.5 / (reso[1]*reso[2] + reso[0]*reso[2] + reso[0]*reso[1]); 
+	_pref[0] = reso[1]*reso[2];
+	_pref[1] = reso[0]*reso[2];
+	_pref[2] = reso[0]*reso[1];
+	std::cout << _pref[0] << " " << _pref[1] << " " << _pref[2] << std::endl;
+	std::cout << _gl_pref << std::endl;
+
 	/*
-    double _reso[] = {_box[0] / _bins[0],_box[1] / _bins[1],_box[2] / _bins[2]};
     double _resoSqr[] = {_reso[0]*_reso[0],
                          _reso[1]*_reso[1],
                          _reso[2]*_reso[2]};
@@ -92,7 +96,19 @@ int capacitor::gridToFlatArrayIndex(int* gridPoint)
 
 int capacitor::translatedGrid(int* G, int dim, int ds)
 {
-    return (G[dim] + _bins[dim] + ds) % _bins[dim];
+	
+	int s;
+	int g = G[dim] + ds;
+	if (g >= _bins[dim])
+		return 0;
+	else if (g < 0)
+		return _bins[dim]-1;
+	else
+		return g;
+
+    //return (G[dim] + _bins[dim] + ds) % _bins[dim];
+
+
 }
 
 double capacitor::getNeighbourSum(double* data, int* G)
@@ -105,9 +121,9 @@ double capacitor::getNeighbourSum(double* data, int* G)
     int GzP[3] = {G[0],G[1],translatedGrid(G,2,1)};
     int GzN[3] = {G[0],G[1],translatedGrid(G,2,-1)};
 
-    return _pref[0] * (data[gridToFlatArrayIndex(GxP)] + data[gridToFlatArrayIndex(GxN)] +
-					   data[gridToFlatArrayIndex(GyP)] + data[gridToFlatArrayIndex(GyN)] +
-					   data[gridToFlatArrayIndex(GzP)] + data[gridToFlatArrayIndex(GzN)]);
+    return _gl_pref * (_pref[0] * (data[gridToFlatArrayIndex(GxP)] + data[gridToFlatArrayIndex(GxN)]) +
+  		               _pref[1] * (data[gridToFlatArrayIndex(GyP)] + data[gridToFlatArrayIndex(GyN)]) +
+ 		               _pref[2] * (data[gridToFlatArrayIndex(GzP)] + data[gridToFlatArrayIndex(GzN)]));
 
                     //double* a = new double[3] {1,1,1};
                     //double b[3] = {1,1,1};
@@ -157,17 +173,19 @@ double capacitor::interpolatePotOnWorldPoint(double* data, double wP[3])
 	//The world points without periodic BCs
 	double W[8][3];
 	//The weights according to the volume of the associated rectangle
-	double we[8];
+	double we;
 	//The resulting potential
 	double res = 0;
-	//std::cout << "Weights: " << std::endl;
 	for (int i = 0; i < 8; i++)
 	{
 		gridToWorld(W[i],G[i]);
-		we[i] = abs((W[i][0] - wP[0])*(W[i][1] - wP[1])*(W[i][2] - wP[2])) / _binVolume;
-		//std::cout << i << " " << we[i] << std::endl;
-		res += pots[7-i]*we[i];
+		we = abs((W[i][0] - wP[0])*(W[i][1] - wP[1])*(W[i][2] - wP[2])) / _binVolume;
+		//std::cout << i << " P: " << pots[7-i] << " w: " << we << " Wp: " << W[i][0] << " " << W[i][1] << " " << W[i][2] << std::endl;
+		res += pots[7-i]*we;
 	}
+	
+	//std::cout << "=================" << std::endl;
+	//std::cout << res << std::endl;
 
 	return res;
 
@@ -177,7 +195,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 {
 
 	double *_T, *_Tnew;
-	bool *_TisBoundary;
+	bool *_TisBoundary,*_TisInside;
     int num_gridpoints = _bins[0]*_bins[1]*_bins[2];
 	double spacing[3] = {_box[0]/_bins[0],_box[1]/_bins[1],_box[2]/_bins[2]};
 	_binVolume = spacing[0]*spacing[1]*spacing[2];
@@ -186,11 +204,13 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     _T =    new double[num_gridpoints]();
     _Tnew = new double[num_gridpoints]();
     _TisBoundary = new bool[num_gridpoints]();
+    _TisInside = new bool[num_gridpoints]();
 
 	//Calc surface points and volume distance grid
-	std::cout << "Get surface, write distance volume data for each electrode" << std::endl;
-    std::ofstream surfaceGridFile;
+	std::cout << "Analyzing electrodes" << std::endl;
+    std::ofstream surfaceGridFile,insideGridFile;
     surfaceGridFile.open((ext_pot_path + std::string("_surfaceGrid")).c_str());
+    insideGridFile.open((ext_pot_path + std::string("_insideGrid")).c_str());
     for (int i = 0; i < _electrodes.size(); i++)
     {
         std::cout << "Electrode #" << i << std::endl;
@@ -222,11 +242,18 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 						//fprintf(stderr,"SURFACE %d %f\n",cnt,  _electrodes[i].pot);
                         _TisBoundary[cnt] = true;
                         surfaceGridFile << P[0] << " " << P[1] << " " << P[2] << " " << _electrodes[i].pot << "\n";
-                    }/* else {
-                        _TisBoundary[cnt] = false;
-                        _T[cnt] = 0;
-                        _Tnew[cnt] = 0;
-					}*/
+                    } else {
+						//Always check fist electrode
+						if (i == 0)
+							_TisInside[cnt] = _electrodes[i].isInside(P);
+						//Check second electrode only if inside first
+						else if (_TisInside[cnt])
+						{
+							_TisInside[cnt] = _electrodes[i].isInside(P);
+							if (_TisInside[cnt])
+								insideGridFile << P[0] << " " << P[1] << " " << P[2] << "\n";
+						}
+					}
                     cnt++;
                 }
             }
@@ -234,6 +261,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
         distVolumeGridFile.close();
     }
     surfaceGridFile.close();
+    insideGridFile.close();
 
 	//Calc volume potential
     std::cout << std::endl << "7-Point Stencil Relaxation with boundary values" << std::endl;
@@ -242,6 +270,9 @@ void capacitor::create_potential_file(std::string ext_pot_path)
     {
         dMax = 0;
         //std::cout << _T[worldToFlatArrayIndex(new double[3] { 2,2,10})] << std::endl;
+
+		// Simple Jacobi relaxation
+		/*
         int cnt = 0;
         for (int x = 0; x < _bins[0]; x++)
         {
@@ -249,17 +280,19 @@ void capacitor::create_potential_file(std::string ext_pot_path)
             {
                 for (int z = 0; z < _bins[2]; z++)
                 {
-                    int G[3] = {x,y,z};
-                    //double* P = gridToWorld(G);
-                    //int j = gridToFlatArrayIndex(G);
+					if (_TisInside[cnt])
+					{
+						int G[3] = {x,y,z};
+						//double* P = gridToWorld(G);
+						//int j = gridToFlatArrayIndex(G);
 
-                    if (!_TisBoundary[cnt])
-                    {
-                        _Tnew[cnt] = getNeighbourSum(_T, G);
-						//if (_Tnew[cnt]<0)
-						//	fprintf(stderr,"NEIGHBOUR SUM %f\n",  _Tnew[cnt]);
-                    }
-
+						if (!_TisBoundary[cnt])
+						{
+							_Tnew[cnt] = getNeighbourSum(_T, G);
+							//if (_Tnew[cnt]<0)
+							//	fprintf(stderr,"NEIGHBOUR SUM %f\n",  _Tnew[cnt]);
+						}
+					}
                     cnt++;
                 }
             }
@@ -271,27 +304,110 @@ void capacitor::create_potential_file(std::string ext_pot_path)
             {
                 for (int z = 0; z < _bins[2]; z++)
                 {
-                    int G[3] =  {x,y,z};
-                    //double* P = gridToWorld(G);
-                    //int j = gridToFlatArrayIndex(G);
+					if (_TisInside[cnt])
+					{
+						int G[3] =  {x,y,z};
+						//double* P = gridToWorld(G);
+						//int j = gridToFlatArrayIndex(G);
 
-                    if (!_TisBoundary[cnt])
-                    {
-
-                        double d =fabs(_T[cnt]-_Tnew[cnt]);
-                        if (dMax < d)
-                            dMax = d;
-
-                        _T[cnt] = getNeighbourSum(_Tnew, G);
-                    }
+						if (!_TisBoundary[cnt])
+						{
+							_T[cnt] = getNeighbourSum(_Tnew, G);
+							
+							double d =fabs(_T[cnt]-_Tnew[cnt]);
+							if (dMax < d)
+								dMax = d;
+						}
+					}
                     cnt++;
                 }
             }
         }
+	    */	
+
+		//SOR
+		
+        int cnt = 0;
+		double w = 1.9;
+		double wi = (1-w);
+		double wp = w * _gl_pref;
+
+		/*
+        for (int x = 0; x < _bins[0]; x++)
+        {
+            for (int y = 0; y < _bins[1]; y++)
+            {
+                for (int z = 0; z < _bins[2]; z++)
+                {
+					if (_TisInside[cnt])
+					{
+						//double* P = gridToWorld(G);
+						//int j = gridToFlatArrayIndex(G);
+
+						if (!_TisBoundary[cnt])
+						{
+							int G[3] = {x,y,z};
+
+							int GxP[3] = {translatedGrid(G,0,1),G[1],G[2]};
+							int GxN[3] = {translatedGrid(G,0,-1),G[1],G[2]};
+							int GyP[3] = {G[0],translatedGrid(G,1,1),G[2]};
+							int GyN[3] = {G[0],translatedGrid(G,1,-1),G[2]};
+							int GzP[3] = {G[0],G[1],translatedGrid(G,2,1)};
+							int GzN[3] = {G[0],G[1],translatedGrid(G,2,-1)};
+							
+							_Tnew[cnt] = wi * _T[cnt] + wp * (_pref[0] * (_T[gridToFlatArrayIndex(GxP)] + _T[gridToFlatArrayIndex(GxN)]) +
+														      _pref[1] * (_T[gridToFlatArrayIndex(GyP)] + _T[gridToFlatArrayIndex(GyN)]) +
+											                  _pref[2] * (_T[gridToFlatArrayIndex(GzP)] + _T[gridToFlatArrayIndex(GzN)]));
+						}
+					}
+                    cnt++;
+                }
+            }
+        }
+		cnt = 0;
+		*/
+        for (int x = 0; x < _bins[0]; x++)
+        {
+            for (int y = 0; y < _bins[1]; y++)
+            {
+                for (int z = 0; z < _bins[2]; z++)
+                {
+					if (_TisInside[cnt])
+					{
+						//double* P = gridToWorld(G);
+						//int j = gridToFlatArrayIndex(G);
+
+						if (!_TisBoundary[cnt])
+						{
+							int G[3] = {x,y,z};
+
+							int GxP[3] = {translatedGrid(G,0,1),G[1],G[2]};
+							int GxN[3] = {translatedGrid(G,0,-1),G[1],G[2]};
+							int GyP[3] = {G[0],translatedGrid(G,1,1),G[2]};
+							int GyN[3] = {G[0],translatedGrid(G,1,-1),G[2]};
+							int GzP[3] = {G[0],G[1],translatedGrid(G,2,1)};
+							int GzN[3] = {G[0],G[1],translatedGrid(G,2,-1)};
+							
+							double Told = _T[cnt];
+							_T[cnt] = wi * _T[cnt] + wp * (_pref[0] * (_T[gridToFlatArrayIndex(GxP)] + _T[gridToFlatArrayIndex(GxN)]) +
+														   _pref[1] * (_T[gridToFlatArrayIndex(GyP)] + _T[gridToFlatArrayIndex(GyN)]) +
+											               _pref[2] * (_T[gridToFlatArrayIndex(GzP)] + _T[gridToFlatArrayIndex(GzN)]));
+							
+							double d =fabs(Told-_T[cnt]);
+							if (dMax < d)
+								dMax = d;
+						}
+					}
+                    cnt++;
+                }
+            }
+        }
+		
+
         if (i % 100 == 0)
         {
             std::cout << dMax << std::endl;
-            std::cout << "Iteration " << i << std::endl;
+            //std::cout << "Iteration " << i << std::endl;
         }
 
 
@@ -340,18 +456,31 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 
 	//Calculate vacuum surface charge
     std::cout << std::endl << "Save Surface charge to file" << std::endl;
-    std::ofstream surfaceChargesFile,normalPointsFile;
-    surfaceChargesFile.open((ext_pot_path + std::string("_scharge")).c_str());
-    normalPointsFile.open((ext_pot_path + std::string("_normalPoints")).c_str());
-	double pref = _eps_0;
-	double indChargeSum = 0;
+	//Length of normal vector from surface charge point to assure that adjacent grid points are not on boundary
+	double grad_len = _surface_prec+2*minSpacing;
+	//Gradient length only from surface tube to interpolation point
+	double pref = _eps_0/(2*minSpacing);
+	
+	std::ofstream surfaceChargesFile;
+	surfaceChargesFile.open((ext_pot_path + std::string("_scharge")).c_str());
+
     for (int i = 0; i < _electrodes.size(); i++)
 	{
+		std::ofstream normalPointsFile;
+		normalPointsFile.open((ext_pot_path + std::string("_normalPoints" + intToString(i))).c_str());
+		double indChargeSum = 0;
+
 		for (int j = 0; j < _electrodes[i]._numFaces; j++)	
 		{
-			double nP[3] = {_electrodes[i]._triangles[j].center[0] + _electrodes[i]._triangles[j].normal[0]*(2.0*_surface_prec+minSpacing),
-			                _electrodes[i]._triangles[j].center[1] + _electrodes[i]._triangles[j].normal[1]*(2.0*_surface_prec+minSpacing),
-			                _electrodes[i]._triangles[j].center[2] + _electrodes[i]._triangles[j].normal[2]*(2.0*_surface_prec+minSpacing)};
+			//The interpolation point directly on the edge of the surface tube
+			double nsP[3] = {_electrodes[i]._triangles[j].center[0] + _electrodes[i]._triangles[j].normal[0]*_surface_prec,
+			                 _electrodes[i]._triangles[j].center[1] + _electrodes[i]._triangles[j].normal[1]*_surface_prec,
+			                 _electrodes[i]._triangles[j].center[2] + _electrodes[i]._triangles[j].normal[2]*_surface_prec};
+			
+			//The interpolation point inside the vacuum
+			double nP[3] = {_electrodes[i]._triangles[j].center[0] + _electrodes[i]._triangles[j].normal[0]*grad_len,
+			                _electrodes[i]._triangles[j].center[1] + _electrodes[i]._triangles[j].normal[1]*grad_len,
+			                _electrodes[i]._triangles[j].center[2] + _electrodes[i]._triangles[j].normal[2]*grad_len};
 
 			normalPointsFile << nP[0] << " " << nP[1] << " " << nP[2] << std::endl;
 
@@ -359,6 +488,7 @@ void capacitor::create_potential_file(std::string ext_pot_path)
             worldToGrid(nP, G);
 			int k = gridToFlatArrayIndex(G);
 
+			double interpolatedPotSurface = interpolatePotOnWorldPoint(_T,nsP);
 			double interpolatedPot = interpolatePotOnWorldPoint(_T,nP);
 
             if (abs(_T[k]-interpolatedPot) > 1)
@@ -371,19 +501,27 @@ void capacitor::create_potential_file(std::string ext_pot_path)
 			if (_TisBoundary[k])
 				std::cout << "Warning: Next grid point of surface normal point is boundary" << std::endl;
 
-			double indCharge = (_electrodes[i].pot - interpolatedPot) * _electrodes[i]._triangles[j].area * pref;
+			//double indCharge = (_electrodes[i].pot - interpolatedPot) * _electrodes[i]._triangles[j].area * pref;
+			double indCharge = (interpolatedPotSurface - interpolatedPot) * _electrodes[i]._triangles[j].area * pref;
+			//std::cout << "(" << interpolatedPotSurface << " - " << interpolatedPot << ") * " << _electrodes[i]._triangles[j].area << std::endl;
 			indChargeSum+= indCharge;
-            surfaceChargesFile << _electrodes[i]._triangles[j].center[0] << " " << _electrodes[i]._triangles[j].center[1] << " " << _electrodes[i]._triangles[j].center[2] << " " << indCharge << "\n";
+            //surfaceChargesFile << _electrodes[i]._triangles[j].center[0] << " " << _electrodes[i]._triangles[j].center[1] << " " << _electrodes[i]._triangles[j].center[2] << " " << indCharge << "\n";
+			surfaceChargesFile << indCharge << "\n";
 		}
+
+        //surfaceChargesFile << indChargeSum;
+		normalPointsFile.close();
+     	std::cout << "Total induced charge on electrode " << i << ": " << indChargeSum << std::endl;
+     	std::cout << std::endl;
+
 	
 	}
-	surfaceChargesFile.close();
-	normalPointsFile.close();
-	std::cout << "Total induced charge: " << indChargeSum << std::endl;
 
+	surfaceChargesFile.close();
 	delete[] _T;
 	delete[] _Tnew;
 	delete[] _TisBoundary; 
+	delete[] _TisInside; 
 }
 
 

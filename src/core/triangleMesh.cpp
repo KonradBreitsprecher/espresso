@@ -265,12 +265,27 @@ double triangleMesh::sqrDistToFeatureOfFaceIndex(double P[3], int faceIndex, int
 	//}
 }
 
+bool triangleMesh::isInside(double P[3])
+{
+	double v[3];
+	int i=-1;
+	minVectorToMesh(P,v,&i);
+	/*std::cout << P[0] << " " << P[1] << " " << P[2] << std::endl;
+	std::cout << v[0] << " " << v[1] << " " << v[2] << std::endl;
+	std::cout << utils::veclen(v) << std::endl ;
+	std::cout << scalar(v,_triangles[i].normal) <<
+*/
+	return scalar(v,_triangles[i].normal)>=0;
+}
 
-void triangleMesh::minVectorToMesh(double P[3], double res[3])
+
+void triangleMesh::minVectorToMesh(double P[3], double res[3], int *minDistFaceIndex)
 {
 	double distSqr=0;
 	double minDistSqr = 1e300;
-	int minDistFeature=0,minDistFaceIndex=0, feature=0;
+	int minDistFeature=0,feature=0;
+	*minDistFaceIndex=-1;
+
 	res[0] = res[1] = res[2] = minDistSqr;
 
 	for (int i = 0; i < _numFaces; i++)
@@ -279,31 +294,35 @@ void triangleMesh::minVectorToMesh(double P[3], double res[3])
 		if (minDistSqr > distSqr)
 		{
 			minDistSqr = distSqr;
-			minDistFaceIndex = i;
+			*minDistFaceIndex = i;
 			minDistFeature = feature;
 		}
 	}
-	vecToFeatureOfFaceIndex(P, minDistFaceIndex, minDistFeature, minDistSqr, res);
+	vecToFeatureOfFaceIndex(P, *minDistFaceIndex, minDistFeature, minDistSqr, res);
 }
 
 void triangleMesh::vecToFeatureOfFaceIndex(double P[3], int faceIndex, int feature, double distSqr, double res[3])
 {
+	
+	vecsub(P, _triangles[faceIndex].center, res);
 
-	if (feature < 3) /* Feature is triangle point */
+	/*
+	if (feature < 3) // Feature is triangle point
 	{
 		vecsub(P, _triangles[faceIndex].vertices[feature], res);
 	}
-	else if (feature < 6) /* Feature is Edge */
+	else if (feature < 6) // Feature is Edge
 	{
 		vecdist_line_point(_triangles[faceIndex].vertices[feature-3], _triangles[faceIndex].edges[feature-3], P, res);
 	}
-	else /* Feature is Face */
+	else // Feature is Face
 	{
 		res[0] = _triangles[faceIndex].normal[0]; 
 		res[1] = _triangles[faceIndex].normal[1]; 
 		res[2] = _triangles[faceIndex].normal[2]; 
 		vecscale(res, sqrt(distSqr));
 	}
+	*/
 }
 
 

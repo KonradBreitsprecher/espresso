@@ -39,6 +39,7 @@
 #include "communication.hpp"
 
 #include "utils.hpp"
+#include "random.hpp"
 #include "verlet.hpp"
 #include "cells.hpp"
 #include "particle_data.hpp"
@@ -162,6 +163,7 @@ int iccp3m_iteration() {
 
     pref = 1.0/(coulomb.prefactor*6.283185307);
 	iccp3m_cfg.citeration=0;
+
 	for(j=0;j<iccp3m_cfg.num_iteration;j++) {
 		hmax=0.;
 		force_calc_iccp3m(); /* Calculate electrostatic forces (SR+LR) excluding source source interaction*/
@@ -186,9 +188,13 @@ int iccp3m_iteration() {
 					ez += iccp3m_cfg.extz;
 
 					if (ex == 0 && ey == 0 && ez == 0) {
-						ostringstream msg;
-						msg <<"ICCP3M found zero electric field on a charge. This must never happen";
-						runtimeError(msg);
+						//ostringstream msg;
+						//msg <<"ICCP3M found zero electric field on a charge. This must never happen";
+						//runtimeError(msg);
+						fprintf(stderr, "ICCP3M found zero electric field on a charge. This must never happen\n");
+						ex = 0.00001 * d_random();
+						ey = 0.00001 * d_random();
+						ez = 0.00001 * d_random();
 					}
 					/* the dot product   */
 					fdot = ex*iccp3m_cfg.nvectorx[id]+
@@ -212,12 +218,18 @@ int iccp3m_iteration() {
 					difftemp=fabs( 1*(hnew - hold)/(hmax + fabs(hnew+hold)) ); /* relative variation: never use 
 																				  an estimator which can be negative
 																				  here */
-					if(difftemp > diff && part[i].p.q > 1e-5)
+					//if(difftemp > diff && part[i].p.q > 1e-5)
+					if(difftemp > diff)
 					{
 						//                          if (fabs(difftemp - 1./(1./iccp3m_cfg.relax - 1.)) > 1e-10) 
 						diff=difftemp;  /* Take the largest error to check for convergence */
 					}
 					part[i].p.q = hnew * iccp3m_cfg.areas[id];
+					
+					//if (part[i].p.identity==450)
+					//{
+					//	printf("%d %e\n",j, part[i].p.q); fflush(stdout);
+					//}
 					//fprintf(stderr, "pid %d  iccid %d  q %f\n",i,id,part[i].p.q);
 					/* check if the charge now is more than 1e6, to determine if ICC still leads to reasonable results */
 					/* this is kind a arbitrary measure but, does a good job spotting divergence !*/
@@ -243,7 +255,8 @@ int iccp3m_iteration() {
 	} /* iteration */
 	on_particle_change();
 	
-	fprintf(stderr, "ICC finished %d\n",iccp3m_cfg.citeration);
+    //if (this_node == 0)
+	//	fprintf(stderr, "%d ",iccp3m_cfg.citeration);
 
 	return iccp3m_cfg.citeration;
 }
