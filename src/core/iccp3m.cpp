@@ -166,9 +166,32 @@ int iccp3m_iteration() {
 
 	for(j=0;j<iccp3m_cfg.num_iteration;j++) {
 		hmax=0.;
+
+		//cells_update_ghosts();
+
+		//cells_resort_particles(CELL_GLOBAL_EXCHANGE);
+
+		//cells_resort_particles(CELL_NEIGHBOR_EXCHANGE);
+		
+		/*
+		ghost_communicator(&cell_structure.ghost_cells_comm);
+   	    ghost_communicator(&cell_structure.update_ghost_pos_comm);	
+		*/
+
+		ghost_communicator(&cell_structure.exchange_ghosts_comm);
+
 		force_calc_iccp3m(); /* Calculate electrostatic forces (SR+LR) excluding source source interaction*/
+		
+		ghost_communicator(&cell_structure.collect_ghost_force_comm);
+		
+		//cells_update_ghosts();
+		
+			
+		
 		diff=0;
 		for(c = 0; c < local_cells.n; c++) {
+			
+			
 			cell = local_cells.cell[c];
 			part = cell->part;
 			np   = cell->n;
@@ -242,11 +265,13 @@ int iccp3m_iteration() {
 					}
 				}
 			}  /* cell particles */
+			
+			
 			// printf("cell %d w %d particles over (node %d)\n",c,np,this_node); fflush(stdout);
 		} /* local cells */
 		iccp3m_cfg.citeration++;
 		MPI_Allreduce(&diff, &globalmax, 1,MPI_DOUBLE, MPI_MAX, comm_cart);
-
+			
 		if (globalmax < iccp3m_cfg.convergence) 
 			break; 
 		if ( diff > 1e89 ) /* Error happened */
@@ -255,8 +280,8 @@ int iccp3m_iteration() {
 	} /* iteration */
 	on_particle_change();
 	
-    //if (this_node == 0)
-	//	fprintf(stderr, "%d ",iccp3m_cfg.citeration);
+    if (this_node == 0)
+		fprintf(stderr, "%d \n",iccp3m_cfg.citeration);
 
 	return iccp3m_cfg.citeration;
 }
@@ -278,11 +303,11 @@ void force_calc_iccp3m() {
     break;
   case CELL_STRUCTURE_DOMDEC:
     if(dd.use_vList) {
-      if (rebuild_verletlist) {
-        build_verlet_lists_and_calc_verlet_ia_iccp3m();
+       if (rebuild_verletlist) {
+          build_verlet_lists_and_calc_verlet_ia_iccp3m();
        } else  {
-        calculate_verlet_ia_iccp3m();
-      }
+          calculate_verlet_ia_iccp3m();
+       }
     }
     else
       calc_link_cell_iccp3m();
@@ -354,76 +379,90 @@ void layered_calculate_ia_iccp3m()
 
 void build_verlet_lists_and_calc_verlet_ia_iccp3m()
 {
-  int c, np1, n, np2, i ,j, j_start=0;
-  Cell *cell;
-  IA_Neighbor *neighbor;
-  Particle *p1, *p2;
-  PairList *pl;
-  double dist2, vec21[3];
+	int c, np1, n, np2, i ,j, j_start=0;
+	Cell *cell;
+	IA_Neighbor *neighbor;
+	Particle *p1, *p2;
+	PairList *pl;
+	double dist2, vec21[3];
 
 #ifdef VERLET_DEBUG 
-  int estimate, sum=0;
-  fprintf(stderr,"%d: build_verlet_list_and_calc_verlet_ia:\n",this_node);
-  /* estimate number of interactions: (0.5*n_part*ia_volume*density)/n_nodes */
-  estimate = 0.5*n_part*(4.0/3.0*PI*pow(max_cut_nonbonded,3.0))*(n_part/(box_l[0]*box_l[1]*box_l[2]))/n_nodes;
+	int estimate, sum=0;
+	fprintf(stderr,"%d: build_verlet_list_and_calc_verlet_ia:\n",this_node);
+	/* estimate number of interactions: (0.5*n_part*ia_volume*density)/n_nodes */
+	estimate = 0.5*n_part*(4.0/3.0*PI*pow(max_cut_nonbonded,3.0))*(n_part/(box_l[0]*box_l[1]*box_l[2]))/n_nodes;
 
-  if (!dd.use_vList) { fprintf(stderr, "%d: build_verlet_lists, but use_vList == 0\n", this_node); errexit(); }
+	if (!dd.use_vList) { fprintf(stderr, "%d: build_verlet_lists, but use_vList == 0\n", this_node); errexit(); }
 #endif
- 
-  /* Loop local cells */
-  for (c = 0; c < local_cells.n; c++) {
-    VERLET_TRACE(fprintf(stderr,"%d: cell %d with %d neighbors\n",this_node,c, dd.cell_inter[c].n_neighbors));
 
-    cell = local_cells.cell[c];
-    p1   = cell->part;
-    np1  = cell->n;
-    /* Loop cell neighbors */
-    for (n = 0; n < dd.cell_inter[c].n_neighbors; n++) {
-      neighbor = &dd.cell_inter[c].nList[n];
-      p2  = neighbor->pList->part;
-      np2 = neighbor->pList->n;
-      VERLET_TRACE(fprintf(stderr,"%d: neighbor %d contains %d parts\n",this_node,n,np2));
-      /* init pair list */
-      pl  = &neighbor->vList;
-      pl->n = 0;
-      /* Loop cell particles */
-      for(i=0; i < np1; i++) {
-	j_start = 0;
-	/* Tasks within cell: (no bonded forces) store old position, avoid double counting */
-	if(n == 0) {
-	  memmove(p1[i].l.p_old, p1[i].r.p, 3*sizeof(double));
-	  j_start = i+1;
-	}
-	/* Loop neighbor cell particles */
-	for(j = j_start; j < np2; j++) {
+	/* Loop local cells */
+	for (c = 0; c < local_cells.n; c++) {
+		VERLET_TRACE(fprintf(stderr,"%d: cell %d with %d neighbors\n",this_node,c, dd.cell_inter[c].n_neighbors));
+
+		cell = local_cells.cell[c];
+		p1   = cell->part;
+		np1  = cell->n;
+		/* Loop cell neighbors */
+		for (n = 0; n < dd.cell_inter[c].n_neighbors; n++) {
+			neighbor = &dd.cell_inter[c].nList[n];
+			p2  = neighbor->pList->part;
+			np2 = neighbor->pList->n;
+			VERLET_TRACE(fprintf(stderr,"%d: neighbor %d contains %d parts\n",this_node,n,np2));
+			/* init pair list */
+			pl  = &neighbor->vList;
+			pl->n = 0;
+			/* Loop cell particles */
+			for(i=0; i < np1; i++) {
+				j_start = 0;
+				/* Tasks within cell: (no bonded forces) store old position, avoid double counting */
+				if(n == 0) {
+					memmove(p1[i].l.p_old, p1[i].r.p, 3*sizeof(double));
+					j_start = i+1;
+				}
+				/* Loop neighbor cell particles */
+				for(j = j_start; j < np2; j++) {
 #ifdef EXCLUSIONS
-          if(do_nonbonded(&p1[i], &p2[j]))
+					if(do_nonbonded(&p1[i], &p2[j]))
 #endif
-	  {
-	  dist2 = distance2vec(p1[i].r.p, p2[j].r.p, vec21);
+					{
+						dist2 = distance2vec(p1[i].r.p, p2[j].r.p, vec21);
 
-	  VERLET_TRACE(fprintf(stderr,"%d: pair %d %d has distance %f\n",this_node,p1[i].p.identity,p2[j].p.identity,sqrt(dist2)));
-	  if(dist2 <= SQR(get_ia_param(p1[i].p.type, p2[j].p.type)->max_cut + skin)) {
-	    ONEPART_TRACE(if(p1[i].p.identity==check_id) fprintf(stderr,"%d: OPT: Verlet Pair %d %d (Cells %d,%d %d,%d dist %f)\n",this_node,p1[i].p.identity,p2[j].p.identity,c,i,n,j,sqrt(dist2)));
-	    ONEPART_TRACE(if(p2[j].p.identity==check_id) fprintf(stderr,"%d: OPT: Verlet Pair %d %d (Cells %d %d dist %f)\n",this_node,p1[i].p.identity,p2[j].p.identity,c,n,sqrt(dist2)));
+						VERLET_TRACE(fprintf(stderr,"%d: pair %d %d has distance %f\n",this_node,p1[i].p.identity,p2[j].p.identity,sqrt(dist2)));
+						if(dist2 <= SQR(get_ia_param(p1[i].p.type, p2[j].p.type)->max_cut + skin)) {
+							ONEPART_TRACE(if(p1[i].p.identity==check_id) fprintf(stderr,"%d: OPT: Verlet Pair %d %d (Cells %d,%d %d,%d dist %f)\n",this_node,p1[i].p.identity,p2[j].p.identity,c,i,n,j,sqrt(dist2)));
+							ONEPART_TRACE(if(p2[j].p.identity==check_id) fprintf(stderr,"%d: OPT: Verlet Pair %d %d (Cells %d %d dist %f)\n",this_node,p1[i].p.identity,p2[j].p.identity,c,n,sqrt(dist2)));
 
-	    add_pair_iccp3m(pl, &p1[i], &p2[j]);
-	    /* calc non bonded interactions */ 
-	       add_non_bonded_pair_force_iccp3m(&(p1[i]), &(p2[j]), vec21, sqrt(dist2), dist2);
-	  }
-	 }
+							//if (p2[j].l.ghost==1 && this_node == 0 && p2[j].p.q>0.02)
+							
+						/*	
+							if (p1[j].p.identity==1102)
+								fprintf(stderr, "Cell %d Neigh %d p1 Ghost %d Node %d q %e\n",c,n,p1[j].l.ghost,this_node, p1[j].p.q) ;
+							if (p2[j].p.identity==1102)
+								fprintf(stderr, "Cell %d Neigh %d p2 Ghost %d Node %d q %e\n",c,n,p2[j].l.ghost,this_node, p2[j].p.q) ;
+						*/	
+
+
+								//fprintf(stderr, "N %d gP %d q %f\n",this_node,p2[j].p.identity, p2[j].p.q) ;
+
+							add_pair_iccp3m(pl, &p1[i], &p2[j]);
+							/* calc non bonded interactions */ 
+							add_non_bonded_pair_force_iccp3m(&(p1[i]), &(p2[j]), vec21, sqrt(dist2), dist2);
+						}
+					}
+				}
+			}
+			resize_verlet_list_iccp3m(pl);
+			VERLET_TRACE(fprintf(stderr,"%d: neighbor %d has %d pairs\n",this_node,n,pl->n));
+			VERLET_TRACE(sum += pl->n);
+		}
 	}
-      }
-      resize_verlet_list_iccp3m(pl);
-      VERLET_TRACE(fprintf(stderr,"%d: neighbor %d has %d pairs\n",this_node,n,pl->n));
-      VERLET_TRACE(sum += pl->n);
-    }
-  }
 
-  VERLET_TRACE(fprintf(stderr,"%d: total number of interaction pairs: %d (should be around %d)\n",this_node,sum,estimate));
- 
-  rebuild_verletlist = 0;
+	VERLET_TRACE(fprintf(stderr,"%d: total number of interaction pairs: %d (should be around %d)\n",this_node,sum,estimate));
+
+	rebuild_verletlist = 0;
 }
+
+
 
 void calculate_verlet_ia_iccp3m()
 {
