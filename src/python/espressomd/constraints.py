@@ -150,3 +150,15 @@ class HomogeneousMagneticField(Constraint):
     """
 
     _so_name = "Constraints::HomogeneousMagneticField"
+
+class ExternalField(Constraint):
+    """
+    Attributes
+    ----------
+    H : array of :obj:`float`
+        Magnetic field vector. Describes both field direction and
+        strength of the magnetic field (via length of the vector).
+
+    """
+
+    _so_name = "Constraints::ExternalField"
