@@ -1,11 +1,9 @@
-#include <fstream>
-
-#include "boost/multi_array.hpp"
-#include "node_grid.hpp"
+#include <boost/multi_array.hpp>
+#include "grid.hpp"
 
 
 template <typename T, size_t N>
-class Lattice //: Communication::InstanceCallback
+class LatticeMA //: Communication::InstanceCallback
 {
     public:
         //---Typedefs---
@@ -131,7 +129,7 @@ class Lattice //: Communication::InstanceCallback
 
     public:
 
-        Lattice(tArrayRef data, std::array<int, N> halo_size) 
+        LatticeMA(tArrayRef data, std::array<int, N> halo_size) 
             : m_halo_size(halo_size)
         {
             // Bins from incoming data shape (for global data, without halo)
@@ -195,6 +193,8 @@ class Lattice //: Communication::InstanceCallback
             */
         }
 
+        /*
+
         void calculate_gradient()
         {
 
@@ -249,6 +249,8 @@ class Lattice //: Communication::InstanceCallback
 
             //write_gradient_to_file();
         }
+
+        */
        
         /* 
         //Works for <double>
@@ -303,6 +305,8 @@ class Lattice //: Communication::InstanceCallback
             }
             return false;
         }
+
+        /*
         bool get_gradient_data_from_position(double *pos, boost::array<T,N> &data)
         {
             tIndexArray l_i;
@@ -313,7 +317,7 @@ class Lattice //: Communication::InstanceCallback
             }
             return false;
         }
-        
+        */
 
 
 

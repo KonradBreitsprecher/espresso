@@ -26,6 +26,8 @@
 #include "ShapeBasedConstraint.hpp"
 #include "HomogeneousMagneticField.hpp"
 
+#include "ExternalField.hpp"
+
 namespace ScriptInterface {
 namespace Constraints {
 
@@ -39,6 +41,9 @@ void initialize() {
 
   ScriptInterface::register_new<ScriptInterface::Constraints::HomogeneousMagneticField>(
       "Constraints::HomogeneousMagneticField");
+  
+  ScriptInterface::register_new<ScriptInterface::Constraints::ExternalField>(
+      "Constraints::ExternalField");
 #endif
 }
 } /* namespace Constraints */

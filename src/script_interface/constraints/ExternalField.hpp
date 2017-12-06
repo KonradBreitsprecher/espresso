@@ -24,17 +24,37 @@
 
 #include "core/constraints/Constraint.hpp"
 #include "core/constraints/ExternalField.hpp"
+#include <boost/multi_array.hpp>
 
 namespace ScriptInterface {
 namespace Constraints {
 
 class ExternalField : public Constraint {
 public:
-  ExternalField()
-    : m_constraint(new ::Constraints::ExternalField()) {
+  ExternalField() {
     add_parameters({
-                        {"field", [this](Variant const &v) { m_constraint->set_field( ??? get_value<Vector3d>(v)); },
-                                  [this]()                 { return ??? m_constraint->potential(); }}
+                        {"field", [this](Variant const &v) {
+                            //std::cout << print_variant_types(v) << std::endl;
+                            auto field = get_value<std::vector<Variant>>(v);
+                            auto shape = get_value<std::vector<int>>(field[0]);
+                            auto data = get_value<std::vector<double>>(field[1]);
+                            auto order = get_value<int>(field[2]); 
+                            auto halo = order / 2;
+                            auto array = boost::multi_array_ref<Vector3d, 3>(reinterpret_cast<Vector3d *>(data.data()), shape);
+
+                            m_constraint = std::make_shared<::Constraints::ExternalField>(array, std::array<int, 3>{halo, halo, halo}); 
+                            //m_constraint = std::make_shared<::Constraints::ExternalField<Vector3d,3>>(array, {halo, halo, halo}); 
+                        }, [this]()                 { return std::vector<Variant>{}; }},
+                        {"particle_weights", [this](Variant const &v) {
+                                  std::unordered_map<int, double> weights;
+                                  auto pairs = get_value<std::vector<Variant>>(v);
+                                    for(auto const& e: pairs) {
+                                        auto pair = get_value<std::vector<Variant>>(e);
+                                        weights[get_value<int>(pair.front())] = get_value<double>(pair.back());
+                                    }
+                                    m_constraint->set_weights(weights);
+                        }, []() {        return std::vector<Variant>{};   }           }
+                                  
                    });
   }
 
