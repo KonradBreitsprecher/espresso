@@ -13,7 +13,7 @@ void ExternalField::add_force(Particle *p, double *folded_pos) {
 		}
 	}
 	else
-		std::cout << "particle not on node" << std::endl;
+		std::cout << "node " << this_node << " node grid " << node_grid[0] << " " << node_grid[1] << " " << node_grid[2] <<  "  ERROR: cannot map particle " << p->p.identity << " at " << folded_pos[0] << " " <<  folded_pos[1] << " " <<   folded_pos[2] << " on local data" << std::endl;
 
 }
 

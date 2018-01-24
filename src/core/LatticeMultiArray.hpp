@@ -1,5 +1,5 @@
 #include <boost/multi_array.hpp>
-#include "grid.hpp"
+#include "grid.hpp"      //for node_grid, box_l
 
 
 template <typename T, size_t N>
@@ -35,21 +35,57 @@ class LatticeMA //: Communication::InstanceCallback
           return _index;
         }
 
-        // Index array in local lattice data from position
-        bool get_local_index_from_position(double *pos, tIndexArray &local_index)
+        // Index array in local lattice data from folded position
+        bool get_local_index_from_position(double *pos_folded, tIndexArray &local_index)
         {
             for(int dim = 0; dim < N; ++dim) {
-                int l = int(pos[dim]/box_l[dim]*m_bins[dim]) - m_local_halo_offset[dim];
+                int l = int(pos_folded[dim]/box_l[dim]*m_bins[dim]) - m_local_halo_offset[dim];
                 //std::cout << dim << " " << pos[dim] << " " << m_bins[dim] <<  " " <<  l << " " << m_halo_size[dim] << " " << m_local_block_size[dim] << std::endl;
-                if (l < -m_halo_size[dim] || l >= m_local_block_size[dim]-m_halo_size[dim]) {
-                    return false;
-                } else {
+                
+                //Border nodes should respect periodicity
+                //if (is_border_node) {
+                 
+                //index is to the left of local data
+                if (l < -m_halo_size[dim]) {
+                    //Shift n_bins to the right
+                    l += m_bins[dim];
+                    //check if in valid range on the right
+                    if (l >= m_local_block_size[dim]-m_halo_size[dim]) {
+                        return false;
+                    } else {
+                        local_index[dim] = l;
+                    }
+                }
+                //index is to the right of local data
+                else if (l >= m_local_block_size[dim]-m_halo_size[dim]) {
+                    //Shift n_bins to the left
+                    l -= m_bins[dim];
+                    //check if in valid range on the left
+                    if (l < -m_halo_size[dim]) {
+                        return false;
+                    } else {
+                        local_index[dim] = l;
+                    }
+                }
+                else {
                     local_index[dim] = l;
                 }
+
+                /* 
+                }
+                else 
+                {
+                    if (l < -m_halo_size[dim] || l >= m_local_block_size[dim]-m_halo_size[dim]) {
+                        return false;
+                    } else {
+                        local_index[dim] = l;
+                    }
+                }
+                */
             }
             return true;
         }
-        
+
         // Index array in global lattice data from position
         tIndexArray get_global_index_from_position(double *pos)
         {
@@ -99,7 +135,7 @@ class LatticeMA //: Communication::InstanceCallback
                 // ...get it's index array.
                 local_index = getIndexArray( m_local_data, i );
                 for(int dim = 0; dim < N; ++dim) {
-                    // Calculate the global index array respecting halos...
+                    // Calculate the global index array respecting halos and periodicity...
                     global_index[dim] = mod( m_local_halo_offset[dim] - m_halo_size[dim] + local_index[dim], m_bins[dim] );
                 }
                 // ...and assign global to local data.
@@ -145,13 +181,13 @@ class LatticeMA //: Communication::InstanceCallback
             rebase_local_data();//This could be removed with a shift in local index by halo_size in get_local_index_from_position()
 
 
-            /*
+            
             //Prints
 
             
-            usleep(rank*1000000);
+            usleep(this_node*1000000);
 
-            if (rank == 0)
+            if (this_node == 0)
             {
                 std::cout << "Lattice Bins [" << m_bins[0] << " " << m_bins[1] << " " << m_bins[2] << "]" << std::endl;
                 std::cout << "Node Grid [" << node_grid[0] << " " << node_grid[1] << " " << node_grid[2] << "]" << std::endl;
@@ -163,7 +199,7 @@ class LatticeMA //: Communication::InstanceCallback
             //std::cout << m_local_data.index_bases()[0] << " " << m_local_data.index_bases()[1] << " " << m_local_data.index_bases()[2] << std::endl;
 
             //Local and global bounds
-            std::cout << "\nNode " << rank << " node_pos " << node_pos[0] << "/" << node_grid[0]-1 << " " << node_pos[1] << "/" << node_grid[1]-1 << " " << node_pos[2] << "/" << node_grid[2]-1 <<  std::endl;
+            std::cout << "\nNode " << this_node << " node_pos " << node_pos[0] << "/" << node_grid[0]-1 << " " << node_pos[1] << "/" << node_grid[1]-1 << " " << node_pos[2] << "/" << node_grid[2]-1 <<  std::endl;
 
             std::cout << "local bins  [[" << -m_halo_size[0] << ".." << m_local_block_size[0]-m_halo_size[0]-1 << "],["
                                           << -m_halo_size[1] << ".." << m_local_block_size[1]-m_halo_size[1]-1 << "],[" 
@@ -188,9 +224,9 @@ class LatticeMA //: Communication::InstanceCallback
             //}
 
             //Write to file
-            write_lattice_to_file();
+            //write_lattice_to_file();
 
-            */
+            
         }
 
         /*
@@ -300,6 +336,7 @@ class LatticeMA //: Communication::InstanceCallback
             tIndexArray l_i;
             if (get_local_index_from_position(pos, l_i))
             {
+                //std::cout << "Assuming local index [" << l_i[0] << " " << l_i[1] << " " << l_i[2] << "] from position [" << pos[0] << " " << pos[1] << " " << pos[2] << "]" << std::endl;
                 data = m_local_data(l_i);
                 return true;
             }

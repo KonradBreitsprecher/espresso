@@ -25,6 +25,8 @@
 #include "core/constraints/Constraint.hpp"
 #include "core/constraints/ExternalField.hpp"
 #include <boost/multi_array.hpp>
+#include "integrate.hpp" //for skin
+#include "grid.hpp"      //for box_l
 
 namespace ScriptInterface {
 namespace Constraints {
@@ -35,14 +37,19 @@ public:
     add_parameters({
                         {"field", [this](Variant const &v) {
                             //std::cout << print_variant_types(v) << std::endl;
+                            //field = (bins, data, order)
                             auto field = get_value<std::vector<Variant>>(v);
                             auto shape = get_value<std::vector<int>>(field[0]);
                             auto data = get_value<std::vector<double>>(field[1]);
                             auto order = get_value<int>(field[2]); 
-                            auto halo = order / 2;
+                            //Increase halo to cover order + skin
+                            //order = 0: ?
+                            auto halo_x = order / 2 + int(skin / box_l[0]*shape[0]); 
+                            auto halo_y = order / 2 + int(skin / box_l[1]*shape[1]); 
+                            auto halo_z = order / 2 + int(skin / box_l[2]*shape[2]); 
                             auto array = boost::multi_array_ref<Vector3d, 3>(reinterpret_cast<Vector3d *>(data.data()), shape);
 
-                            m_constraint = std::make_shared<::Constraints::ExternalField>(array, std::array<int, 3>{halo, halo, halo}); 
+                            m_constraint = std::make_shared<::Constraints::ExternalField>(array, std::array<int, 3>{halo_x, halo_y, halo_z}); 
                             //m_constraint = std::make_shared<::Constraints::ExternalField<Vector3d,3>>(array, {halo, halo, halo}); 
                         }, [this]()                 { return std::vector<Variant>{}; }},
                         {"particle_weights", [this](Variant const &v) {
