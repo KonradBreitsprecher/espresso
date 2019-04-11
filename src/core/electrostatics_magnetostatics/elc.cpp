@@ -636,8 +636,9 @@ static void setup_P(int p, double omega) {
       if (p.r.p[2] > (elc_params.h -
                       elc_params.space_layer)) { // handle the upper case now
 
-        e = exp(omega * (2 * elc_params.h - p.r.p[2]));
-
+        e = exp(omega * (elc_params.h - p.r.p[2]));
+        //e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        
         scale = p.p.q * elc_params.delta_mid_top;
 
         lclimgetop[POQESM] = scxcache[o + ic].s / e;
@@ -743,7 +744,8 @@ static void setup_Q(int q, double omega) {
       if (p.r.p[2] > (elc_params.h -
                       elc_params.space_layer)) { // handle the upper case now
 
-        e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        e = exp(omega * (elc_params.h - p.r.p[2]));
+        //e = exp(omega * (2 * elc_params.h - p.r.p[2]));
 
         scale = p.p.q * elc_params.delta_mid_top;
 
@@ -936,7 +938,8 @@ static void setup_PQ(int p, int q, double omega) {
       if (p.r.p[2] > (elc_params.h -
                       elc_params.space_layer)) { // handle the upper case now
 
-        e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        e = exp(omega * (elc_params.h - p.r.p[2]));
+        //e = exp(omega * (2 * elc_params.h - p.r.p[2]));
         scale = p.p.q * elc_params.delta_mid_top;
 
         lclimgetop[PQESSM] = scxcache[ox + ic].s * scycache[oy + ic].s / e;
@@ -1064,6 +1067,8 @@ void ELC_add_force() {
     add_P_force();
     checkpoint("************distri p", p, 0, 2);
   }
+  
+  clear_log_forces("addP");
 
   for (q = 1; uy * (q - 1) < elc_params.far_cut && q <= n_scycache; q++) {
     omega = C_2PI * uy * q;
@@ -1072,6 +1077,8 @@ void ELC_add_force() {
     add_Q_force();
     checkpoint("************distri q", 0, q, 2);
   }
+
+  clear_log_forces("addQ");
 
   for (p = 1; ux * (p - 1) < elc_params.far_cut && p <= n_scxcache; p++) {
     for (q = 1; Utils::sqr(ux * (p - 1)) + Utils::sqr(uy * (q - 1)) <
@@ -1242,6 +1249,7 @@ void ELC_init() {
     p3m.params.additional_mesh[1] = 0;
     p3m.params.additional_mesh[2] = 0;
   }
+  printf("space layer: %f\n", elc_params.space_layer);
   ELC_on_resort_particles();
 }
 

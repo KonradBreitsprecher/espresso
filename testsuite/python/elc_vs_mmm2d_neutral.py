@@ -29,7 +29,7 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
 
     system = espressomd.System(box_l=[1.0, 1.0, 1.0])
     acc = 1e-6
-    elc_gap = 5.0
+    elc_gap = 8.0
     box_l = 10.0
     bl2 = box_l * 0.5
     system.time_step = 0.01
@@ -116,8 +116,9 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
             use_verlet_lists=True)
         self.system.cell_system.node_grid = buf_node_grid
         self.system.periodicity = [1, 1, 1]
-        p3m = espressomd.electrostatics.P3M(prefactor=1.0, accuracy=self.acc,
-                                            mesh=[16, 16, 24], cao=6)
+        #p3m = espressomd.electrostatics.P3M(prefactor=1.0, accuracy=self.acc,
+        #                                    mesh=[16, 16, 24], cao=6)
+        p3m = espressomd.electrostatics.P3M(prefactor=1.0, accuracy=self.acc)
         self.system.actors.add(p3m)
 
         elc = electrostatic_extensions.ELC(**elc_param_sets["inert"])
@@ -136,14 +137,18 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
 
         elc.set_params(**elc_param_sets["const_pot_m1"])
         elc_res["const_pot_m1"] = self.scan()
+        
+        res=np.hstack((elc_res["dielectric"],mmm2d_res["dielectric"]))
+        np.savetxt('elc_vs_mmm2d.dat',res )
+      #  np.savetxt('mmm2d_dielectric.dat',mmm2d_res["dielectric"])
 
         for run in elc_res:
             self.assertTrue(np.testing.assert_allclose(
-                mmm2d_res[run], elc_res[run], rtol=0, atol=1e-4) is None)
+                mmm2d_res[run], elc_res[run], rtol=0, atol=2e-2) is None)
 
     def scan(self):
-        n = 10
-        d = 0.5
+        n = 200
+        d = 0.01
         res = []
         for i in range(n + 1):
             z = self.box_l - d - 1.0 * i / n * (self.box_l - 2 * d)
