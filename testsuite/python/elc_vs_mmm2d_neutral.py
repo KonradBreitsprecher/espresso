@@ -86,10 +86,10 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
         self.system.periodicity = [1, 1, 0]
 
         q = 1.0
-        self.system.part.add(id=0, pos=(10.0, 10.0, 10.0), q=-q)
-        self.system.part.add(id=1, pos=(2.0, 2.0, 10.0), q=q / 3.0)
-        self.system.part.add(id=2, pos=(2.0, 10.0, 2.0), q=q / 3.0)
-        self.system.part.add(id=3, pos=(10.0, 2.0, 7.0), q=q / 3.0)
+        self.system.part.add(id=0, pos=(5.0, 5.0, 5.0), q=-q)
+        self.system.part.add(id=1, pos=(2.0, 2.0, 5.0), q=q / 3.0)
+        self.system.part.add(id=2, pos=(2.0, 5.0, 2.0), q=q / 3.0)
+        self.system.part.add(id=3, pos=(5.0, 2.0, 7.0), q=q / 3.0)
 
         #MMM2D
         mmm2d = espressomd.electrostatics.MMM2D(**mmm2d_param_sets["inert"])
