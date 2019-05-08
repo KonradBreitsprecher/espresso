@@ -15,8 +15,10 @@ where
    C=\frac{1}{4\pi \epsilon_0 \epsilon_r}
    :label: coulomb_prefactor
 
-is a prefactor which can be set by the user.
-The commonly used Bdrm length :math:`l_B = e_o^2 / (4 \pi \epsilon_0 \epsilon_r k_B T)` is the length at which the Coulomb energy between two unit charges is equal to the thermal energy :math:`k_B T`.
+is a prefactor which can be set by the user. The commonly used Bjerrum length
+:math:`l_B = e_o^2 / (4 \pi \epsilon_0 \epsilon_r k_B T)` is the length at
+which the Coulomb energy between two unit charges is equal to the thermal
+energy :math:`k_B T`.
 Based on the this length, the prefactor is given by :math:`C=l_B k_B T`.
 
 Computing electrostatic interactions is computationally very expensive.
@@ -457,9 +459,9 @@ Scafacos Electrostatics
 -----------------------
 
 Espresso can use the electrostatics methods from the SCAFACOS *Scalable
-fast Coulomb solvers* library. The specific methods available depend on the compile-time options of the library, and can be queried using :attr:`espressomd.scafacos.available_methods`
+fast Coulomb solvers* library. The specific methods available depend on the compile-time options of the library, and can be queried using :meth:`espressomd.scafacos.ScafacosConnector.available_methods`
 
-To use SCAFACOS, create an instance of :attr:`espressomd.electrostatics.Scafacos` and add it to the list of active actors. Three parameters have to be specified:
+To use SCAFACOS, create an instance of :class:`espressomd.electrostatics.Scafacos` and add it to the list of active actors. Three parameters have to be specified:
 
 * ``method_name``: name of the SCAFACOS method being used.
 * ``method_params``: dictionary containing the method-specific parameters

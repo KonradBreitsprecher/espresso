@@ -263,13 +263,17 @@ if(WITH_PYTHON)
   if(WARNINGS_ARE_ERRORS)
     set(CYTHON_FLAGS "--warning-errors;${CYTHON_FLAGS}")
   endif()
+
+  if(PYTHON_VERSION_MAJOR EQUAL 2)
+    find_program(IPYTHON_EXECUTABLE NAMES ipython2 ipython jupyter)
+  else()
+    find_program(IPYTHON_EXECUTABLE NAMES ipython3 ipython jupyter)
+  endif()
 endif(WITH_PYTHON)
 
 
 find_package(FFTW3)
 if(FFTW3_FOUND)
-  include_directories(SYSTEM ${FFTW3_INCLUDE_DIR})
-  list(APPEND LIBRARIES ${FFTW3_LIBRARIES})
   set(FFTW 3)
 endif(FFTW3_FOUND)
 

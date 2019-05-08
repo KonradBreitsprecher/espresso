@@ -223,6 +223,20 @@ class TestLB(object):
         self.lbf[0, 0, 0].density = density
         self.assertAlmostEqual(self.lbf[0, 0, 0].density, density, delta=1e-4)
 
+    def test_parameter_change_without_seed(self):
+        self.system.actors.clear()
+        self.lbf = self.lb_class(
+            visc=self.params['viscosity'],
+            dens=self.params['dens'],
+            agrid=self.params['agrid'],
+            tau=self.system.time_step,
+            ext_force_density=[0, 0, 0],
+            kT=1.0,
+            seed=42)
+        self.system.actors.add(self.lbf)
+        self.system.thermostat.set_lb(LB_fluid=self.lbf, seed=23, gamma=2.0)
+        self.system.thermostat.set_lb(LB_fluid=self.lbf, gamma=3.0)
+
     def test_grid_index(self):
         self.system.actors.clear()
         self.lbf = self.lb_class(
@@ -310,9 +324,6 @@ class TestLB(object):
                 np.copy(self.lbf[n].velocity), fluid_velocity, atol=1E-6)
 
 
-@ut.skipIf(
-    not espressomd.has_features(["LB"]),
-           "Features not available, skipping test!")
 class TestLBCPU(TestLB, ut.TestCase):
 
     def setUp(self):
@@ -323,7 +334,7 @@ class TestLBCPU(TestLB, ut.TestCase):
 @ut.skipIf(
     not espressomd.gpu_available() or 
     not espressomd.has_features(
-        ["LB_GPU"]),
+        ["CUDA"]),
     "Features or gpu not available, skipping test!")
 class TestLBGPU(TestLB, ut.TestCase):
 
