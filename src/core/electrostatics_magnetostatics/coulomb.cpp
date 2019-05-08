@@ -104,7 +104,8 @@ double cutoff(const Vector3d &box_l) {
   switch (coulomb.method) {
 #ifdef P3M
   case COULOMB_ELC_P3M:
-    return std::max(elc_params.space_layer, p3m.params.r_cut_iL * box_l[0]);
+    return elc_params.far_cut;
+    //return std::max(elc_params.space_layer, p3m.params.r_cut_iL * box_l[0]);
   case COULOMB_MMM2D:
     return layer_h - skin;
   case COULOMB_P3M_GPU:
@@ -199,7 +200,7 @@ void on_coulomb_change() {
     break;
 #endif
   case COULOMB_ELC_P3M:
-    ELC_init();
+    ELC_on_coulomb_change();
     // fall through
   case COULOMB_P3M:
     p3m_init();
@@ -235,7 +236,7 @@ void on_boxl_change() {
   switch (coulomb.method) {
 #ifdef P3M
   case COULOMB_ELC_P3M:
-    ELC_init();
+    ELC_on_boxl_change();
     // fall through
   case COULOMB_P3M_GPU:
   case COULOMB_P3M:

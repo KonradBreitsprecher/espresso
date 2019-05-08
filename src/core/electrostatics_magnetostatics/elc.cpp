@@ -56,10 +56,10 @@
 
 /** \name Inverse box dimensions and derived constants */
 /*@{*/
-static double ux, ux2, uy, uy2, uz, height_inverse;
+static double ux, ux2, uy, uy2, uz;
 /*@}*/
 
-ELC_struct elc_params = {1e100, 10, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0.0};
+ELC_struct elc_params = {1e100, 10, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0.0};
 
 /****************************************
  * LOCAL ARRAYS
@@ -144,16 +144,6 @@ static void add_z_force();
 
 /* COMMON */
 /**********/
-
-void ELC_setup_constants() {
-  ux = 1 / box_l[0];
-  ux2 = ux * ux;
-  uy = 1 / box_l[1];
-  uy2 = uy * uy;
-  uz = 1 / box_l[2];
-
-  height_inverse = 1 / elc_params.h;
-}
 
 /* SC Cache */
 /************/
@@ -319,7 +309,7 @@ static void add_dipole_force() {
   }
 
   gblcblk[0] *= pref;
-  gblcblk[1] *= pref * height_inverse / uz;
+  gblcblk[1] *= pref / elc_params.h / uz;
   gblcblk[2] *= pref;
 
   distribute(size);
@@ -330,7 +320,7 @@ static void add_dipole_force() {
   // Const. potential contribution
   if (elc_params.const_pot) {
     coulomb.field_induced = gblcblk[1];
-    coulomb.field_applied = elc_params.pot_diff * height_inverse;
+    coulomb.field_applied = elc_params.pot_diff / elc_params.h;
     field_tot -= coulomb.field_applied + coulomb.field_induced;
   }
 
@@ -399,9 +389,9 @@ static double dipole_energy() {
   if (elc_params.dielectric_contrast_on) {
     if (elc_params.const_pot) {
       // zero potential difference contribution
-      eng += pref * height_inverse / uz * Utils::sqr(gblcblk[6]);
+      eng += pref / elc_params.h / uz * Utils::sqr(gblcblk[6]);
       // external potential shift contribution
-      eng -= elc_params.pot_diff * height_inverse * gblcblk[6];
+      eng -= elc_params.pot_diff / elc_params.h * gblcblk[6];
     }
 
     /* counter the P3M homogeneous background contribution to the
@@ -453,11 +443,11 @@ static double z_energy() {
         gblcblk[1] += p.p.q * (p.r.p[2] - shift);
         if (p.r.p[2] < elc_params.space_layer) {
           gblcblk[2] -= elc_params.delta_mid_bot * p.p.q;
-          gblcblk[3] -= elc_params.delta_mid_bot * p.p.q * (-p.r.p[2] - shift);
+          //gblcblk[3] -= elc_params.delta_mid_bot * p.p.q * (-p.r.p[2] - shift);
         }
         if (p.r.p[2] > (elc_params.h - elc_params.space_layer)) {
           gblcblk[2] += elc_params.delta_mid_top * p.p.q;
-          gblcblk[3] += elc_params.delta_mid_top * p.p.q *
+          //gblcblk[3] += elc_params.delta_mid_top * p.p.q *
                         (2 * elc_params.h - p.r.p[2] - shift);
         }
       }
@@ -637,6 +627,7 @@ static void setup_P(int p, double omega) {
                       elc_params.space_layer)) { // handle the upper case now
 
         e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        //e = exp(omega * (p.r.p[2] - elc_params.h));
 
         scale = p.p.q * elc_params.delta_mid_top;
 
@@ -744,6 +735,7 @@ static void setup_Q(int q, double omega) {
                       elc_params.space_layer)) { // handle the upper case now
 
         e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        //e = exp(omega * (p.r.p[2] - elc_params.h));
 
         scale = p.p.q * elc_params.delta_mid_top;
 
@@ -937,6 +929,8 @@ static void setup_PQ(int p, int q, double omega) {
                       elc_params.space_layer)) { // handle the upper case now
 
         e = exp(omega * (2 * elc_params.h - p.r.p[2]));
+        //e = exp(omega * (p.r.p[2] - elc_params.h));
+
         scale = p.p.q * elc_params.delta_mid_top;
 
         lclimgetop[PQESSM] = scxcache[ox + ic].s * scycache[oy + ic].s / e;
@@ -1130,18 +1124,10 @@ double ELC_energy() {
   return 0.5 * eng;
 }
 
-int ELC_tune(double error) {
+int ELC_tune() {
   double err;
   double h = elc_params.h, lz = box_l[2];
   double min_inv_boxl = std::min(ux, uy);
-
-  if (elc_params.dielectric_contrast_on) {
-    // adjust lz according to dielectric layer method
-    lz = elc_params.h + elc_params.space_layer;
-  }
-
-  if (h < 0)
-    return ES_ERROR;
 
   elc_params.far_cut = min_inv_boxl;
   do {
@@ -1152,11 +1138,13 @@ int ELC_tune(double error) {
                exp(-2 * M_PI * elc_params.far_cut * h) / (lz + h) *
                    (C_2PI * elc_params.far_cut + 2 * (ux + uy) + 1 / (lz + h)) /
                    (expm1(2 * M_PI * elc_params.far_cut * lz)));
-
     elc_params.far_cut += min_inv_boxl;
-  } while (err > error && elc_params.far_cut < MAXIMAL_FAR_CUT);
-  if (elc_params.far_cut >= MAXIMAL_FAR_CUT)
-    return ES_ERROR;
+  } while (err > elc_params.maxPWerror && elc_params.far_cut < MAXIMAL_FAR_CUT);
+
+   if (elc_params.far_cut >= MAXIMAL_FAR_CUT) {
+      runtimeErrorMsg() << "ELC tuning failed. Increase the ELC gap.";
+      return ES_ERROR;
+  }
   elc_params.far_cut -= min_inv_boxl;
   elc_params.far_cut2 = Utils::sqr(elc_params.far_cut);
 
@@ -1168,6 +1156,7 @@ int ELC_tune(double error) {
  ****************************************/
 
 int ELC_sanity_checks() {
+
   if (!PERIODIC(0) || !PERIODIC(1) || !PERIODIC(2)) {
     runtimeErrorMsg() << "ELC requires periodicity 1 1 1";
     return ES_ERROR;
@@ -1195,56 +1184,73 @@ int ELC_sanity_checks() {
   return ES_OK;
 }
 
-void ELC_init() {
-
-  ELC_setup_constants();
-
-  if (coulomb.method == COULOMB_ELC_P3M && elc_params.dielectric_contrast_on) {
-    // recalculate the space layer size
-    // set the space_layer to be 1/3 of the gap size, so that box = layer
-    elc_params.space_layer = (1. / 3.) * elc_params.gap_size;
-    // but make sure we leave enough space to not have to bother with
-    // overlapping
-    // realspace P3M
-    double maxsl = elc_params.gap_size - p3m.params.r_cut;
-    // and make sure the space layer is not bigger than half the actual
-    // simulation box,
-    // to avoid overlaps
-    if (maxsl > .5 * elc_params.h)
-      maxsl = .5 * elc_params.h;
-    if (elc_params.space_layer > maxsl) {
-      if (maxsl <= 0) {
-        runtimeErrorMsg() << "P3M real space cutoff too large for ELC w/ "
-                             "dielectric contrast";
-      } else
-        elc_params.space_layer = maxsl;
-    }
-
-    // set the space_box
-    elc_params.space_box = elc_params.gap_size - 2 * elc_params.space_layer;
-    // reset minimal_dist for tuning
-    elc_params.minimal_dist =
-        std::min(elc_params.space_box, elc_params.space_layer);
-  }
-
-  if (elc_params.far_calculated && (coulomb.method == COULOMB_ELC_P3M &&
-                                    elc_params.dielectric_contrast_on)) {
-    if (ELC_tune(elc_params.maxPWerror) == ES_ERROR) {
-      runtimeErrorMsg() << "ELC auto-retuning failed, gap size too small";
-    }
-  }
-  if (coulomb.method == COULOMB_ELC_P3M && elc_params.dielectric_contrast_on) {
-    p3m.params.additional_mesh[0] = 0;
-    p3m.params.additional_mesh[1] = 0;
-    p3m.params.additional_mesh[2] = elc_params.space_layer;
-  } else {
-    p3m.params.additional_mesh[0] = 0;
-    p3m.params.additional_mesh[1] = 0;
-    p3m.params.additional_mesh[2] = 0;
-  }
-  ELC_on_resort_particles();
+void ELC_setup_constants() {
+    ux = 1 / box_l[0];
+    ux2 = ux * ux;
+    uy = 1 / box_l[1];
+    uy2 = uy * uy;
+    uz = 1 / box_l[2];
 }
 
+//Box length dependences 
+void ELC_on_boxl_change() {
+    ELC_setup_constants();
+    //Follow-up dependences
+    ELC_tune();
+    ELC_on_resort_particles();
+}
+
+
+void ELC_on_coulomb_change() {
+  ELC_setup_space_layer();
+}
+
+void ELC_init() {
+  ELC_on_boxl_change();
+}
+
+// Depends on p3m r_cut
+int ELC_setup_space_layer() {
+  
+    if (elc_params.dielectric_contrast_on) {
+
+        // initial setup of parameters, may change later when P3M is finally tuned
+        // set the space_layer to be 1/3 of the gap size, so that box = layer
+        elc_params.space_layer = (1. / 3.) * elc_params.gap_size;
+       
+        // make sure we leave enough space to not have to bother with
+        // overlapping realspace P3M
+        double maxsl = elc_params.gap_size - p3m.params.r_cut;
+        if (maxsl <= 0) {
+          runtimeErrorMsg() << "ELC with dielectric contrast: P3M real "
+                               "space cutoff larger than ELC gap.";
+          return ES_ERROR;
+        }
+        // and make sure the space layer is not bigger than half the actual
+        // simulation box, to avoid overlaps
+        if (maxsl > .5 * elc_params.h)
+            maxsl = .5 * elc_params.h;
+
+        if (elc_params.space_layer > maxsl) {
+            elc_params.space_layer = maxsl;
+        }
+        
+        p3m.params.additional_mesh[0] = 0;
+        p3m.params.additional_mesh[1] = 0;
+        p3m.params.additional_mesh[2] = elc_params.space_layer;
+
+    } else {
+
+        p3m.params.additional_mesh[0] = 0;
+        p3m.params.additional_mesh[1] = 0;
+        p3m.params.additional_mesh[2] = 0;
+
+    }
+
+    return ES_OK;
+}
+
+// Depends on boxl
 void ELC_on_resort_particles() {
   n_localpart = cells_get_n_particles();
   n_scxcache = (int)(ceil(elc_params.far_cut / ux) + 1);
@@ -1257,12 +1263,19 @@ void ELC_on_resort_particles() {
   partblk = Utils::realloc(partblk, n_localpart * 8 * sizeof(double));
 }
 
-int ELC_set_params(double maxPWerror, double gap_size, double far_cut,
+int ELC_set_params(double maxPWerror, double gap_size,
                    int neutralize, double delta_top, double delta_bot,
                    int const_pot, double pot_diff) {
+
   elc_params.maxPWerror = maxPWerror;
   elc_params.gap_size = gap_size;
   elc_params.h = box_l[2] - gap_size;
+
+  if (elc_params.h < 0)
+  {
+    runtimeErrorMsg() << "ELC gap larger than box length in z direction";
+    return ES_ERROR;
+  }
 
   if (delta_top != 0.0 || delta_bot != 0.0) {
     elc_params.dielectric_contrast_on = 1;
@@ -1272,20 +1285,18 @@ int ELC_set_params(double maxPWerror, double gap_size, double far_cut,
 
     // neutralize is automatic with dielectric contrast
     elc_params.neutralize = 0;
-    // initial setup of parameters, may change later when P3M is finally tuned
-    // set the space_layer to be 1/3 of the gap size, so that box = layer
-    elc_params.space_layer = (1. / 3.) * gap_size;
-    // set the space_box
-    elc_params.space_box = gap_size - 2 * elc_params.space_layer;
-    // reset minimal_dist for tuning
-    elc_params.minimal_dist =
-        std::min(elc_params.space_box, elc_params.space_layer);
+    
+    if (ELC_setup_space_layer() == ES_ERROR)
+    {
+        return ES_ERROR;
+    }
 
     // Constant potential parameter setup
     if (const_pot) {
       elc_params.const_pot = 1;
       elc_params.pot_diff = pot_diff;
     }
+
   } else {
     // setup without dielectric contrast
     elc_params.dielectric_contrast_on = 0;
@@ -1294,23 +1305,20 @@ int ELC_set_params(double maxPWerror, double gap_size, double far_cut,
     elc_params.delta_mid_bot = 0;
     elc_params.neutralize = neutralize;
     elc_params.space_layer = 0;
-    elc_params.space_box = elc_params.minimal_dist = gap_size;
+    
+    p3m.params.additional_mesh[0] = 0;
+    p3m.params.additional_mesh[1] = 0;
+    p3m.params.additional_mesh[2] = 0;
   }
-
-  ELC_setup_constants();
 
   Coulomb::elc_sanity_check();
 
-  elc_params.far_cut = far_cut;
-  if (far_cut != -1) {
-    elc_params.far_cut2 = Utils::sqr(far_cut);
-    elc_params.far_calculated = 0;
-  } else {
-    elc_params.far_calculated = 1;
-    if (ELC_tune(elc_params.maxPWerror) == ES_ERROR) {
-      runtimeErrorMsg() << "ELC tuning failed, gap size too small";
-    }
+  ELC_setup_constants();
+
+  if (ELC_tune() == ES_ERROR) {
+      return ES_ERROR;
   }
+
   mpi_bcast_coulomb_params();
 
   return ES_OK;
@@ -1520,8 +1528,6 @@ double ELC_P3M_dielectric_layers_energy_contribution(Particle *p1,
     dist = sqrt(dist2);
     eng += p3m_pair_energy(q, dist);
   }
-
-  // fprintf(stderr,"energy is %f\n",eng);
   return (eng);
 }
 
@@ -1545,7 +1551,6 @@ double ELC_P3M_dielectric_layers_energy_self() {
       dist2 = sqrlen(d);
       dist = sqrt(dist2);
       eng += p3m_pair_energy(q, dist);
-      //	fprintf(stderr,"energy is %f\n",eng);
     }
 
     if (p.r.p[2] > (elc_params.h - elc_params.space_layer)) {
@@ -1557,7 +1562,6 @@ double ELC_P3M_dielectric_layers_energy_self() {
       dist2 = sqrlen(d);
       dist = sqrt(dist2);
       eng += p3m_pair_energy(q, dist);
-      //	fprintf(stderr,"energy is %f\n",eng);
     }
   }
   return (eng);

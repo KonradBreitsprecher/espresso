@@ -48,8 +48,6 @@ typedef struct {
    *  that this condition is fulfilled.
    */
   double gap_size;
-  /** @copybrief MMM2D_struct::far_calculated */
-  int far_calculated;
   /** Flag whether the box is neutralized by an homogeneous background.
    *  If true, use a homogeneous neutralizing background for nonneutral
    *  systems. Unlike the 3D case, this background adds an additional
@@ -70,15 +68,8 @@ typedef struct {
   /// @copybrief MMM2D_struct::pot_diff
   double pot_diff;
 
-  /** Minimal distance of two charges for which the far formula is used.
-   *  For plain ELC, this equals #gap_size, but for dielectric ELC it is
-   *  only 1/3 of that.
-   */
-  double minimal_dist;
   /** Layer around the dielectric contrast in which we trick around. */
   double space_layer;
-  /** The space that is finally left. */
-  double space_box;
   /** Up to where particles can be found. */
   double h;
 
@@ -89,7 +80,6 @@ extern ELC_struct elc_params;
  *  @param maxPWerror    @copybrief ELC_struct::maxPWerror
  *                       Note that this counts for the plain 1/r contribution
  *                       alone, without the prefactor and the charge prefactor.
- *  @param min_dist      @copybrief ELC_struct::minimal_dist
  *  @param far_cut       @copybrief ELC_struct::far_cut
  *                       If -1, the cutoff is automatically calculated using
  *                       the error formulas.
@@ -103,7 +93,7 @@ extern ELC_struct elc_params;
  *  @param pot_diff      @copybrief ELC_struct::pot_diff
  *  @retval ES_OK
  */
-int ELC_set_params(double maxPWerror, double min_dist, double far_cut,
+int ELC_set_params(double maxPWerror, double min_dist,
                    int neutralize, double delta_mid_top, double delta_mid_bot,
                    int const_pot, double pot_diff);
 
@@ -118,8 +108,23 @@ double ELC_energy();
 /// @retval ES_ERROR
 int ELC_sanity_checks();
 
-/// initialize the ELC constants
+/// Tune ELC
+int ELC_tune();
+
+/// p3m r_cut dependence
+int ELC_setup_space_layer();
+
+/// Initialize ELC
 void ELC_init();
+
+/// Inverse box sizes
+void ELC_setup_constants();
+
+/// p3m cutoff dependece 
+void ELC_on_coulomb_change();
+
+// boxl dependence
+void ELC_on_boxl_change();
 
 /// resize the particle buffers
 void ELC_on_resort_particles();

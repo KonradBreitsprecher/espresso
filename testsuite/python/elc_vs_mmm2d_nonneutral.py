@@ -28,9 +28,10 @@ from espressomd import electrostatic_extensions
 class ELC_vs_MMM2D_neutral(ut.TestCase):
     # Handle to espresso system
     system = espressomd.System(box_l=[1.0, 1.0, 1.0])
-    acc = 1e-6
-    elc_gap = 5.0
-    box_l = 10.0
+    acc = 1e-8
+    acc_p3m = 1e-6
+    elc_gap = 15.0
+    box_l = 20.0
     bl2 = box_l * 0.5
     system.time_step = 0.01
     system.cell_system.skin = 0.1
@@ -79,11 +80,11 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
             n_layers=10, use_verlet_lists=False)
         self.system.periodicity = [1, 1, 0]
 
-        q = 1.0
-        self.system.part.add(id=0, pos=(5.0, 5.0, 5.0), q=-3.0 * q)
-        self.system.part.add(id=1, pos=(2.0, 2.0, 5.0), q=q / 3.0)
-        self.system.part.add(id=2, pos=(2.0, 5.0, 2.0), q=q / 3.0)
-        self.system.part.add(id=3, pos=(5.0, 2.0, 7.0), q=q / 3.0)
+        q = 3.0
+        self.system.part.add(id=0, pos=(10.0, 10.0, 10.0), q=-3.0 * q)
+        self.system.part.add(id=1, pos=(2.0, 2.0, 10.0), q=q / 3.0)
+        self.system.part.add(id=2, pos=(2.0, 10.0, 2.0), q=q / 3.0)
+        self.system.part.add(id=3, pos=(10.0, 2.0, 7.0), q=q / 3.0)
 
         #MMM2D
         mmm2d = espressomd.electrostatics.MMM2D(**mmm2d_param_sets["inert"])
@@ -108,8 +109,8 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
             use_verlet_lists=True)
         self.system.cell_system.node_grid = buf_node_grid
         self.system.periodicity = [1, 1, 1]
-        p3m = espressomd.electrostatics.P3M(prefactor=1.0, accuracy=self.acc,
-                                            mesh=[20, 20, 32], cao=7, check_neutrality=False)
+        p3m = espressomd.electrostatics.P3M(prefactor=1.0, accuracy=self.acc_p3m,
+                                            mesh=[24, 24, 42], cao=7, check_neutrality=False)
         self.system.actors.add(p3m)
 
         elc = electrostatic_extensions.ELC(**elc_param_sets["inert"])
@@ -127,12 +128,13 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
         elc_res["const_pot_m1"] = self.scan()
 
         for run in elc_res:
+            print(run)
             self.assertTrue(np.testing.assert_allclose(
                 mmm2d_res[run], elc_res[run], rtol=0, atol=1e-4) is None)
 
     def scan(self):
         n = 10
-        d = 0.5
+        d = 0.2
         res = []
         for i in range(n + 1):
             z = self.box_l - d - 1.0 * i / n * (self.box_l - 2 * d)
@@ -142,6 +144,7 @@ class ELC_vs_MMM2D_neutral(ut.TestCase):
             m = [z]
             m.extend(self.system.part[0].f)
             m.append(energy['coulomb'])
+            print(energy['coulomb'])
             res.append(m)
 
         return res

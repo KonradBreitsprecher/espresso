@@ -39,7 +39,7 @@ IF ELECTROSTATICS and P3M:
             int const_pot,
             double pot_diff
 
-        int ELC_set_params(double maxPWerror, double min_dist, double far_cut,
+        int ELC_set_params(double maxPWerror, double min_dist, 
                            int neutralize, double delta_mid_top, double delta_mid_bot, int const_pot, double pot_diff)
 
         # links intern C-struct with python object

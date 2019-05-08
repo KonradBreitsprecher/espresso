@@ -80,8 +80,6 @@ IF ELECTROSTATICS and P3M:
                                   non-neutral systems with a *non-metallic* dielectric jump (eg.
                                   `delta_mid_top` or `delta_mid_bot` in `]-1,1[`) is not covered by the
                                   algorithm and will throw an error.
-        far_cut                 : float, optional
-                                  Cut off radius, use with care, intended for testing purposes.
         """
 
         def validate_params(self):
@@ -93,12 +91,11 @@ IF ELECTROSTATICS and P3M:
             check_type_or_throw_except(self._params["gap_size"], 1, float, "")
             check_range_or_except(
                 self._params, "gap_size", 0, False, "inf", True)
-            check_type_or_throw_except(self._params["far_cut"], 1, float, "")
             check_type_or_throw_except(
                 self._params["neutralize"], 1, type(True), "")
 
         def valid_keys(self):
-            return "maxPWerror", "gap_size", "far_cut", "neutralize", "delta_mid_top", "delta_mid_bot", "const_pot", "pot_diff", "check_neutrality"
+            return "maxPWerror", "gap_size", "neutralize", "delta_mid_top", "delta_mid_bot", "const_pot", "pot_diff", "check_neutrality"
 
         def required_keys(self):
             return ["maxPWerror", "gap_size"]
@@ -106,7 +103,6 @@ IF ELECTROSTATICS and P3M:
         def default_params(self):
             return {"maxPWerror": -1,
                     "gap_size": -1,
-                    "far_cut": -1,
                     "delta_mid_top": 0,
                     "delta_mid_bot": 0,
                     "const_pot": 0,
@@ -131,14 +127,13 @@ IF ELECTROSTATICS and P3M:
             if ELC_set_params(
                 self._params["maxPWerror"],
                 self._params["gap_size"],
-                self._params["far_cut"],
                 int(self._params["neutralize"]),
                 self._params["delta_mid_top"],
                 self._params["delta_mid_bot"],
                 int(self._params["const_pot"]),
                     self._params["pot_diff"]):
                 handle_errors(
-                    "ELC tuning failed, ELC is not set up to work with the GPU P3M")
+                    "ELC setup failed")
 
         def _activate_method(self):
             check_neutrality(self._params)
