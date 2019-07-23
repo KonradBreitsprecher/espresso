@@ -55,7 +55,7 @@ typedef struct {
   int neutralize;
 
   /// @copybrief MMM2D_struct::dielectric_contrast_on
-  int dielectric_contrast_on;
+  bool dielectric_contrast_on;
 
   /// @copybrief MMM2D_struct::delta_mid_top
   double delta_mid_top;
@@ -63,7 +63,7 @@ typedef struct {
   double delta_mid_bot;
 
   /// @copybrief MMM2D_struct::const_pot_on
-  int const_pot;
+  bool const_pot;
   /// @copybrief MMM2D_struct::pot_diff
   double pot_diff;
 
@@ -94,7 +94,7 @@ extern ELC_struct elc_params;
  */
 int ELC_set_params(double maxPWerror, double min_dist,
                    int neutralize, double delta_mid_top, double delta_mid_bot,
-                   int const_pot, double pot_diff);
+                   bool const_pot, double pot_diff);
 
 /// the force calculation
 void ELC_add_force();

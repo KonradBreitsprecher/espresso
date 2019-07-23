@@ -32,10 +32,11 @@ void lb_lbcoupling_activate() {
 
 void lb_lbcoupling_deactivate() {
   if (lattice_switch != ActiveLB::NONE && this_node == 0 && n_part) {
-    runtimeWarning("Recalculating forces, so the LB coupling forces are not "
-                   "included in the particle force the first time step. This "
-                   "only matters if it happens frequently during "
-                   "sampling.\n");
+    runtimeWarningMsg()
+        << "Recalculating forces, so the LB coupling forces are not "
+           "included in the particle force the first time step. This "
+           "only matters if it happens frequently during "
+           "sampling.";
   }
 
   lb_particle_coupling.couple_to_md = false;
@@ -148,12 +149,15 @@ Utils::Vector3d lb_viscous_coupling(Particle *p,
 namespace {
 bool in_local_domain(Utils::Vector3d const &pos) {
   auto const lblattice = lb_lbfluid_get_lattice();
-  return (pos[0] >= my_left[0] - 0.5 * lblattice.agrid[0] &&
-          pos[0] < my_right[0] + 0.5 * lblattice.agrid[0] &&
-          pos[1] >= my_left[1] - 0.5 * lblattice.agrid[1] &&
-          pos[1] < my_right[1] + 0.5 * lblattice.agrid[1] &&
-          pos[2] >= my_left[2] - 0.5 * lblattice.agrid[2] &&
-          pos[2] < my_right[2] + 0.5 * lblattice.agrid[2]);
+  auto const my_left = local_geo.my_left();
+  auto const my_right = local_geo.my_right();
+
+  return (pos[0] >= my_left[0] - 0.5 * lblattice.agrid &&
+          pos[0] < my_right[0] + 0.5 * lblattice.agrid &&
+          pos[1] >= my_left[1] - 0.5 * lblattice.agrid &&
+          pos[1] < my_right[1] + 0.5 * lblattice.agrid &&
+          pos[2] >= my_left[2] - 0.5 * lblattice.agrid &&
+          pos[2] < my_right[2] + 0.5 * lblattice.agrid);
 }
 
 #ifdef ENGINE

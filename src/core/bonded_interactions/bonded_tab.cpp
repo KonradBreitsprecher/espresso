@@ -22,6 +22,7 @@
 
 #ifdef TABULATED
 #include "communication.hpp"
+#include "errorhandling.hpp"
 
 int tabulated_bonded_set_params(int bond_type,
                                 TabulatedBondedInteraction tab_type, double min,
@@ -56,7 +57,7 @@ int tabulated_bonded_set_params(int bond_type,
     tab_pot->maxval = 2.0 * Utils::pi() + ROUND_ERROR_PREC;
     bonded_ia_params[bond_type].num = 3;
   } else {
-    runtimeError("Unsupported tabulated bond type.");
+    runtimeErrorMsg() << "Unsupported tabulated bond type.";
     return 1;
   }
 
