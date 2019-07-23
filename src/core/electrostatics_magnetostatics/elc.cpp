@@ -1167,8 +1167,7 @@ int ELC_sanity_checks() {
   }
 
   // ELC with non-neutral systems and no fully metallic boundaries does not work
-  if (elc_params.dielectric_contrast_on && !elc_params.const_pot &&
-      p3m.square_sum_q > ROUND_ERROR_PREC) {
+  if (p3m.square_sum_q > ROUND_ERROR_PREC && !elc_params.const_pot) {
     runtimeErrorMsg() << "ELC does not work for non-neutral systems and "
                          "non-metallic dielectric contrast.";
     return ES_ERROR;
@@ -1178,11 +1177,11 @@ int ELC_sanity_checks() {
 }
 
 void ELC_setup_constants() {
-    ux = 1 / box_l[0];
+    ux = 1 / box_geo.length()[0];
     ux2 = ux * ux;
-    uy = 1 / box_l[1];
+    uy = 1 / box_geo.length()[1];
     uy2 = uy * uy;
-    uz = 1 / box_l[2];
+    uz = 1 / box_geo.length()[2];
 }
 
 //Box length dependences 
